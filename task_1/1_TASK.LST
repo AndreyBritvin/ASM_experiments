@@ -1,0 +1,53 @@
+Turbo Assembler	 Version 4.1	    02/03/25 20:21:51	    Page 1
+1_task.asm
+
+
+
+      1	0000			     .model tiny
+      2	0000			     .code
+      3				     org 100h
+      4	0100			     start:
+      5	0100  BA 010Cr			     mov dx, offset MyStr	     ; dx = &MyStr
+      6
+      7	0103  B4 09			     mov ah, 09h		     ; ah = 09h
+      8	0105  CD 21			     int 21h			     ; DOS Fn 09h = puts(dx)
+      9
+     10	0107  B8 4C00			     mov ax, 4c00h		     ; ax = 4c00h
+     11	010A  CD 21			     int 21h			     ; DOS Fn 4ch = exit(al)
+     12
+     13	010C  48 65 6C 6C 6F 20	57+  MyStr: db "Hello World$"
+     14	      6F 72 6C 64 24
+     15				     end start
+Turbo Assembler	 Version 4.1	    02/03/25 20:21:51	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/03/25"
+??FILENAME			  Text	 "1_task  "
+??TIME				  Text	 "20:21:51"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 1_TASK
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+MYSTR				  Near	 DGROUP:010C
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0118 Word	  Public  CODE
+
