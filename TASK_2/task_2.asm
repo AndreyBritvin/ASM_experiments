@@ -64,17 +64,77 @@ DRAW_FRAME proc
     endp
 ;-----------------------------------------
 
+;-----------------------------------------
+; Read number from ds:[si] and put integer result to ax
+; Destr ax
+;-----------------------------------------
+ATOI proc
+    push cx
+    xor ax, ax      ; ax = 0
+    mov ch, 10
+
+    ATOI_READ_SYMBOL:
+    mov cl, [si]
+    cmp cl, '0'
+    jb ATOI_END
+    cmp cl, '9'
+    ja ATOI_END
+    sub cl, '0'
+    mul ch
+    add al, cl
+    inc si
+    jmp ATOI_READ_SYMBOL
+    ATOI_END:
+    pop cx
+    ret
+    endp
+;-----------------------------------------
+
+;-----------------------------------------
+; Skip spaces at ds:[si] by incrementing si
+;-----------------------------------------
+SKIP_SPACES proc
+    push cx
+    SKIP_SPACES_BEGIN:
+    mov cl, [si]
+    cmp cl, ' '
+    jne ATOI_END
+    inc si
+    jmp SKIP_SPACES_BEGIN
+    SKIP_SPACES_END:
+    pop cx
+    ret
+    endp
+;-----------------------------------------
+
+;-----------------------------------------
+; Read string from ds:[si]
+;-----------------------------------------
+PARSE_COMMAND_LINE proc
+    push si
+    mov si, 81h
+    call SKIP_SPACES
+    call ATOI
+    mov bx, ax
+    call SKIP_SPACES
+    call ATOI
+    mov cx, ax
+
+    pop si
+    ret
+    endp
+;-----------------------------------------
 
 MAIN:
     cld                            ; for correct work string functions
     call INIT_SCREEN
-
+    call PARSE_COMMAND_LINE
     mov si, offset FRAME_PATTERN ; set character data
 
     mov di, (5 * 80 * 2) + 3 * 2 ; initial offset
     mov ah, 1101010b        ; set color mode
-    mov bx, 5 ; width
-    mov cx, 8 ; height
+    ; mov bx, 5 ; width
+    ; mov cx, 8 ; height
 
     sub bx, 2 ;
     sub cx, 2 ; decrease to include border in number
