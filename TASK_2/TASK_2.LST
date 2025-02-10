@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/09/25 20:32:04	    Page 1
+Turbo Assembler	 Version 4.1	    02/09/25 22:53:46	    Page 1
 task_2.asm
 
 
@@ -6,7 +6,7 @@ task_2.asm
       1	0000			     .model tiny
       2	0000			     .code
       3				     org 100h
-      4	0100  EB 55 90		     Start: jmp	MAIN
+      4	0100  EB 7B 90		     Start: jmp	MAIN
       5				     ;-----------------------------------------
       6				     ;
       7				     ; Req: bx - string	address
@@ -18,16 +18,16 @@ task_2.asm
      13				     ; Destr: bx, cx, si
      14				     ;
      15				     ;-----------------------------------------
-     16	0103			     DRAW_FRAME	proc
+     16	0103			     DRAW_FRAME_BAD proc
      17	0103  56			 push si
-     18	0104  E8 001C			 call DRAW_LINE
+     18	0104  E8 0050			 call DRAW_LINE
      19
      20	0107				 DR_FRAME_DRAW_MIDDLE_BEGIN:
      21	0107  84 ED			 test ch, ch
      22	0109  74 10			 jz DR_FRAME_DRAW_MIDDLE_END ; while ch	> 0
      23	010B  81 C7 00A0		 add di, 80 * 2		     ; di += 80	* 2
      24	010F  8B F3			 mov si, bx
-     25	0111  E8 000F			 call DRAW_LINE		     ; draw_line()
+     25	0111  E8 0043			 call DRAW_LINE		     ; draw_line()
      26	0114  8B DE			 mov bx, si
      27	0116  80 ED 01			 sub ch, 1		     ; ch--;
      28
@@ -35,7 +35,7 @@ task_2.asm
      30	011B				 DR_FRAME_DRAW_MIDDLE_END:
      31
      32	011B  83 C3 03			 add bx, 3
-     33	011E  E8 0002			 call DRAW_LINE
+     33	011E  E8 0036			 call DRAW_LINE
      34	0121  5E			 pop si
      35	0122  C3			 ret
      36	0123				 endp
@@ -45,7 +45,7 @@ task_2.asm
      40				     ;-----------------------------------------
      41				     ; Req:
      42				     ;-----------------------------------------
-     43	0123			     DRAW_LINE proc
+     43	0123			     DRAW_LINE_BAD proc
      44	0123  51			 push cx
      45	0124  57			 push di
      46
@@ -60,7 +60,7 @@ task_2.asm
      55	0132  84 C9			 test cl, cl
      56	0134  74 0B			 jz DR_LINE_END_LOOP	    ; while cl > 0
      57	0136  26: 89 15			 mov es:[di], dx	    ; put at [di] symbol in dx
-Turbo Assembler	 Version 4.1	    02/09/25 20:32:04	    Page 2
+Turbo Assembler	 Version 4.1	    02/09/25 22:53:46	    Page 2
 task_2.asm
 
 
@@ -84,36 +84,93 @@ task_2.asm
      74
      75				     ;-----------------------------------------
      76				     ; Initialise screen address to es
-     77				     ; Destr: es
-     78				     ;-----------------------------------------
-     79	014F			     INIT_SCREEN proc
-     80	014F  53			 push bx
-     81	0150  BB B800			 mov bx, 0b800h
-     82	0153  8E C3			 mov es, bx
-     83	0155  5B			 pop bx
-     84	0156  C3			 ret
-     85	0157				 endp
-     86				     ;-----------------------------------------
-     87
-     88	0157			     MAIN:
-     89	0157  E8 FFF5			 call INIT_SCREEN
-     90
-     91	015A  BB 016Er			 mov bx, offset	FRAME_PATTERN ;	set character data
-     92	015D  BF 0326			 mov di, (5 * 80 * 2) +	3 * 2 ;	initial	offset
-     93	0160  B6 6A			 mov dh, 1101010b	 ; set color mode
-     94	0162  B5 03			 mov ch, 3		 ; set width
-     95	0164  B1 05			 mov cl, 5		 ; set height
-     96	0166  E8 FF9A			 call DRAW_FRAME
-     97
-     98					 ; Finish Programm
-     99	0169  B8 4C00			 mov ax, 4c00h			     ; ax = 4c00h
-    100	016C  CD 21			     int 21h
-    101
-    102	016E  31 32 33 34 35 36	37+  FRAME_PATTERN: db '123456789'
-    103	      38 39
-    104
-    105				     end Start
-Turbo Assembler	 Version 4.1	    02/09/25 20:32:04	    Page 3
+     77				     ; Return: nothing
+     78				     ; Destr: es
+     79				     ;-----------------------------------------
+     80	014F			     INIT_SCREEN proc
+     81	014F  53			 push bx
+     82	0150  BB B800			 mov bx, 0b800h
+     83	0153  8E C3			 mov es, bx
+     84	0155  5B			 pop bx
+     85	0156  C3			 ret
+     86	0157				 endp
+     87				     ;-----------------------------------------
+     88
+     89				     ;-----------------------------------------
+     90				     ; Put string at es:[di], where first  symbol ds:[si]
+     91				     ;				    second, etc	  ds:[si + 1] and print	it cx times
+     92				     ;				    last is	  ds:[si + 2]
+     93				     ; Destr:	 al, cx, di
+     94				     ;-----------------------------------------
+     95	0157			     DRAW_LINE proc
+     96	0157  57			 push di
+     97	0158  51			 push cx
+     98	0159  AC			 lodsb
+     99	015A  AB			 stosw
+    100	015B  AC			 lodsb
+    101	015C  F3> AB			 rep stosw
+    102	015E  AC			 lodsb
+    103	015F  AB			 stosw
+    104	0160  59			 pop cx
+    105	0161  5F			 pop di
+    106	0162  81 C7 00A0		 add di, 80 * 2
+    107	0166  C3			 ret
+    108	0167				 endp
+    109				     ;-----------------------------------------
+    110
+    111				     ;-----------------------------------------
+    112				     ; Put frame at es:[di], where first line	ds:[si]	    ---	ds:[si + 2]
+    113				     ;				   second, etc	ds:[si + 3] ---	ds:[si + 5] and	print it cx times
+    114				     ;				   last	is	ds:[si + 6] ---	ds:[si + 8]
+Turbo Assembler	 Version 4.1	    02/09/25 22:53:46	    Page 3
+task_2.asm
+
+
+
+    115				     ; Destr:	 al, bx, cx, di
+    116				     ;-----------------------------------------
+    117	0167			     DRAW_FRAME	proc
+    118	0167  E8 FFED			 call DRAW_LINE
+    119
+    120	016A				 DRAW_N_LINES:
+    121	016A  85 DB			 test bx, bx
+    122	016C  74 08			 jz DRAW_N_LINES_END
+    123	016E  56			 push si
+    124	016F  E8 FFE5			 call DRAW_LINE
+    125	0172  5E			 pop si
+    126	0173  4B			 dec bx
+    127	0174  EB F4			 jmp DRAW_N_LINES
+    128	0176				 DRAW_N_LINES_END:
+    129
+    130	0176  83 C6 03			 add si, 3
+    131	0179  E8 FFDB			 call DRAW_LINE
+    132	017C  C3			 ret
+    133	017D				 endp
+    134				     ;-----------------------------------------
+    135
+    136
+    137	017D			     MAIN:
+    138	017D  FC			 cld				; for correct work string functions
+    139	017E  E8 FFCE			 call INIT_SCREEN
+    140
+    141	0181  BE 0197r			 mov si, offset	FRAME_PATTERN ;	set character data
+    142	0184  BF 0326			 mov di, (5 * 80 * 2) +	3 * 2 ;	initial	offset
+    143	0187  B4 6A			 mov ah, 1101010b	 ; set color mode
+    144					 ; mov ch, 3		   ; set width
+    145					 ; mov cl, 5		   ; set height
+    146	0189  BB 0005			 mov bx, 5 ; width
+    147	018C  B9 0008			 mov cx, 8 ; height
+    148	018F  E8 FFD5			 call DRAW_FRAME
+    149
+    150					 ; Finish Programm
+    151	0192  B8 4C00			 mov ax, 4c00h			     ; ax = 4c00h
+    152	0195  CD 21			     int 21h
+    153
+    154	0197  31 32 33 34 35 36	37+  FRAME_PATTERN: db '123456789'
+    155	      38 39
+    156
+    157				     end Start
+Turbo Assembler	 Version 4.1	    02/09/25 22:53:46	    Page 4
 Symbol Table
 
 
@@ -123,7 +180,7 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/09/25"
 ??FILENAME			  Text	 "task_2  "
-??TIME				  Text	 "20:32:04"
+??TIME				  Text	 "22:53:45"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
@@ -137,20 +194,24 @@ Symbol Name			  Type	 Value
 @MODEL				  Text	 1
 @STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
-DRAW_FRAME			  Near	 DGROUP:0103
-DRAW_LINE			  Near	 DGROUP:0123
+DRAW_FRAME			  Near	 DGROUP:0167
+DRAW_FRAME_BAD			  Near	 DGROUP:0103
+DRAW_LINE			  Near	 DGROUP:0157
+DRAW_LINE_BAD			  Near	 DGROUP:0123
+DRAW_N_LINES			  Near	 DGROUP:016A
+DRAW_N_LINES_END		  Near	 DGROUP:0176
 DR_FRAME_DRAW_MIDDLE_BEGIN	  Near	 DGROUP:0107
 DR_FRAME_DRAW_MIDDLE_END	  Near	 DGROUP:011B
 DR_LINE_END_LOOP		  Near	 DGROUP:0141
 DR_LINE_LOOP_BEGIN		  Near	 DGROUP:0132
-FRAME_PATTERN			  Near	 DGROUP:016E
+FRAME_PATTERN			  Near	 DGROUP:0197
 INIT_SCREEN			  Near	 DGROUP:014F
-MAIN				  Near	 DGROUP:0157
+MAIN				  Near	 DGROUP:017D
 START				  Near	 DGROUP:0100
 
 Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  0177 Word	  Public  CODE
+  _TEXT				  16  01A0 Word	  Public  CODE
 

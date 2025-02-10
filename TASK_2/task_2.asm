@@ -2,78 +2,10 @@
 .code
 org 100h
 Start: jmp MAIN
-;-----------------------------------------
-;
-; Req: bx - string address
-;      cx - coordinates, where
-;           ch - x coord
-;           cl - y coord
-;       dh - color mode
-; Assumes: es = 0b800h
-; Destr: bx, cx, si
-;
-;-----------------------------------------
-DRAW_FRAME proc
-    push si
-    call DRAW_LINE
-
-    DR_FRAME_DRAW_MIDDLE_BEGIN:
-    test ch, ch
-    jz DR_FRAME_DRAW_MIDDLE_END ; while ch > 0
-    add di, 80 * 2              ; di += 80 * 2
-    mov si, bx
-    call DRAW_LINE              ; draw_line()
-    mov bx, si
-    sub ch, 1                   ; ch--;
-
-    jmp DR_FRAME_DRAW_MIDDLE_BEGIN
-    DR_FRAME_DRAW_MIDDLE_END:
-
-    add bx, 3
-    call DRAW_LINE
-    pop si
-    ret
-    endp
-;-----------------------------------------
-
-
-;-----------------------------------------
-; Req:
-;-----------------------------------------
-DRAW_LINE proc
-    push cx
-    push di
-
-    mov dl, [bx]        ; dx = current symbol
-    mov es:[di], dx
-    add di, 2           ; di += 2
-    add bx, 1           ; bx += 1, next symbol
-
-    mov dl, [bx]        ; dx = current symbol
-
-    DR_LINE_LOOP_BEGIN:
-    test cl, cl
-    jz DR_LINE_END_LOOP        ; while cl > 0
-    mov es:[di], dx            ; put at [di] symbol in dx
-    add di, 2                  ; di += 2
-    sub cl, 1                  ; cl--
-    jmp DR_LINE_LOOP_BEGIN     ; loop
-    DR_LINE_END_LOOP:
-
-    add bx, 1
-
-    mov dl, [bx]        ; dx = current symbol
-    mov es:[di], dx
-    add bx, 1           ; bx += 1, next symbol
-
-    pop di
-    pop cx
-    ret
-    endp
-;-----------------------------------------
 
 ;-----------------------------------------
 ; Initialise screen address to es
+; Return: nothing
 ; Destr: es
 ;-----------------------------------------
 INIT_SCREEN proc
@@ -85,14 +17,68 @@ INIT_SCREEN proc
     endp
 ;-----------------------------------------
 
+;-----------------------------------------
+; Put string at es:[di], where first  symbol ds:[si]
+;                              second, etc   ds:[si + 1] and print it cx times
+;                              last is       ds:[si + 2]
+; Destr:    al, cx, di, si
+;-----------------------------------------
+DRAW_LINE proc
+    push di
+    push cx
+    lodsb
+    stosw
+    lodsb
+    rep stosw
+    lodsb
+    stosw
+    pop cx
+    pop di
+    add di, 80 * 2
+    ret
+    endp
+;-----------------------------------------
+
+;-----------------------------------------
+; Put frame at es:[di], where first line   ds:[si]     --- ds:[si + 2]
+;                             second, etc  ds:[si + 3] --- ds:[si + 5] and print it cx times
+;                             last is      ds:[si + 6] --- ds:[si + 8]
+; Destr:    al, bx, cx, di
+;-----------------------------------------
+DRAW_FRAME proc
+    call DRAW_LINE
+
+    DRAW_N_LINES:
+    test bx, bx
+    jz DRAW_N_LINES_END
+    push si
+    call DRAW_LINE
+    pop si
+    dec bx
+    jmp DRAW_N_LINES
+    DRAW_N_LINES_END:
+
+    add si, 3
+    call DRAW_LINE
+    ret
+    endp
+;-----------------------------------------
+
+
 MAIN:
+    cld                            ; for correct work string functions
     call INIT_SCREEN
 
-    mov bx, offset FRAME_PATTERN ; set character data
+    mov si, offset FRAME_PATTERN ; set character data
+
     mov di, (5 * 80 * 2) + 3 * 2 ; initial offset
-    mov dh, 1101010b        ; set color mode
-    mov ch, 3               ; set width
-    mov cl, 5               ; set height
+    mov ah, 1101010b        ; set color mode
+    mov bx, 5 ; width
+    mov cx, 8 ; height
+
+    sub bx, 2 ;
+    sub cx, 2 ; decrease to include border in number
+
     call DRAW_FRAME
 
     ; Finish Programm
