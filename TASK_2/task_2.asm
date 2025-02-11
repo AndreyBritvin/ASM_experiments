@@ -21,7 +21,7 @@ INIT_SCREEN proc
 ; Put string at es:[di], where first  symbol ds:[si]
 ;                              second, etc   ds:[si + 1] and print it cx times
 ;                              last is       ds:[si + 2]
-; Destr:    al, cx, di, si
+; Destr:    al, di, si
 ;-----------------------------------------
 DRAW_LINE proc
     push di
@@ -66,7 +66,7 @@ DRAW_FRAME proc
 
 ;-----------------------------------------
 ; Read number from ds:[si] and put integer result to ax
-; Destr ax
+; Destr ax, si
 ;-----------------------------------------
 ATOI proc
     push cx
@@ -91,6 +91,48 @@ ATOI proc
 ;-----------------------------------------
 
 ;-----------------------------------------
+; Read number from ds:[si] and put integer hex result to ax
+; Destr ax, si
+;-----------------------------------------
+ATOIHEX proc
+    push cx
+    xor ax, ax      ; ax = 0
+    mov ch, 16      ; TODO: fix via shifting
+    ATOIHEX_READ_SYMBOL:
+    mov cl, [si]
+    cmp cl, '0'
+    jb ATOIHEX_CHECK_LETTER
+    cmp cl, '9'
+    ja ATOIHEX_CHECK_LETTER
+    jmp ATOIHEX_DIGIT
+
+    ATOIHEX_CHECK_LETTER:
+    cmp cl, 'a'
+    jb ATOIHEX_END
+    cmp cl, 'h'
+    ja ATOIHEX_END
+    jmp ATOIHEX_LETTER
+
+    ATOIHEX_DIGIT:
+    sub cl, '0'
+    jmp ATOIHEX_MULT
+
+    ATOIHEX_LETTER:
+    sub cl, 'a' - 10
+
+    ATOIHEX_MULT:
+    mul ch
+    add al, cl
+    inc si
+    jmp ATOIHEX_READ_SYMBOL
+
+    ATOIHEX_END:
+    pop cx
+    ret
+    endp
+;-----------------------------------------
+
+;-----------------------------------------
 ; Skip spaces at ds:[si] by incrementing si
 ;-----------------------------------------
 SKIP_SPACES proc
@@ -109,18 +151,46 @@ SKIP_SPACES proc
 
 ;-----------------------------------------
 ; Read string from ds:[si]
+; Destr: si
 ;-----------------------------------------
 PARSE_COMMAND_LINE proc
-    push si
+    push di
+    push dx
     mov si, 81h
-    call SKIP_SPACES
-    call ATOI
-    mov bx, ax
-    call SKIP_SPACES
-    call ATOI
-    mov cx, ax
 
-    pop si
+    call SKIP_SPACES
+    call ATOI
+    mov bx, ax          ; get width TODO: move to another function
+
+    call SKIP_SPACES
+    call ATOI
+    mov cx, ax          ; get height
+
+    call SKIP_SPACES
+    call ATOIHEX
+    ; mov dx, ax          ; save reigster ax in dx
+    push ax
+    call SKIP_SPACES
+    call ATOI
+    cmp ax, 0
+    je COMM_LINE_PATTERN
+    sub ax, 1
+    mov di, ax
+    shl di, 3
+    add di, ax
+    lea si, [FRAME_PATTERN + di]
+    ; mov si, offset FRAME_PATTERN
+    jmp COMM_LINE_END
+
+    COMM_LINE_PATTERN:
+    add si, 2
+    COMM_LINE_END:
+
+    pop ax
+    shl ax, 8
+
+    pop dx
+    pop di
     ret
     endp
 ;-----------------------------------------
@@ -129,10 +199,10 @@ MAIN:
     cld                            ; for correct work string functions
     call INIT_SCREEN
     call PARSE_COMMAND_LINE
-    mov si, offset FRAME_PATTERN ; set character data
+    ; mov si, offset FRAME_PATTERN ; set character data
 
     mov di, (5 * 80 * 2) + 3 * 2 ; initial offset
-    mov ah, 1101010b        ; set color mode
+    ; mov ah, 1101010b        ; set color mode
     ; mov bx, 5 ; width
     ; mov cx, 8 ; height
 
@@ -146,5 +216,6 @@ MAIN:
 	int 21h
 
 FRAME_PATTERN: db '123456789'
+               db '+-+| |+-+'
 
 end Start
