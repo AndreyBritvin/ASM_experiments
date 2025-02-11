@@ -41,9 +41,9 @@ DRAW_LINE proc
 
 ;-----------------------------------------
 ; Put frame at es:[di], where first line   ds:[si]     --- ds:[si + 2]
-;                             second, etc  ds:[si + 3] --- ds:[si + 5] and print it cx times
+;                             second, etc  ds:[si + 3] --- ds:[si + 5] and print it bx times
 ;                             last is      ds:[si + 6] --- ds:[si + 8]
-; Destr:    al, bx, cx, di
+; Destr:    al, bx, cx, di, si
 ;-----------------------------------------
 DRAW_FRAME proc
     call DRAW_LINE
@@ -134,6 +134,7 @@ ATOIHEX proc
 
 ;-----------------------------------------
 ; Skip spaces at ds:[si] by incrementing si
+; Destr: si
 ;-----------------------------------------
 SKIP_SPACES proc
     push cx
@@ -151,11 +152,15 @@ SKIP_SPACES proc
 
 ;-----------------------------------------
 ; Read string from ds:[si]
-; Destr: si
+; Ret: ah - color scheme
+;      bx - height
+;      cx - width
+;      dx - addr of text_str
+;      si - addr of frame_pattern
+; Destr: ax, bx, cx, dx, si
 ;-----------------------------------------
 PARSE_COMMAND_LINE proc
     push di
-    push dx
     mov si, 81h
 
     call SKIP_SPACES
@@ -168,32 +173,51 @@ PARSE_COMMAND_LINE proc
 
     call SKIP_SPACES
     call ATOIHEX
-    ; mov dx, ax          ; save reigster ax in dx
-    push ax
+    shl ax, 8   ; shift color scheme to ah
+    push ax     ; save ax with color scheme
+    mov dx, si  ; save si in dx
+
     call SKIP_SPACES
     call ATOI
     cmp ax, 0
     je COMM_LINE_PATTERN
-    sub ax, 1
-    mov di, ax
-    shl di, 3
-    add di, ax
-    lea si, [FRAME_PATTERN + di]
-    ; mov si, offset FRAME_PATTERN
-    jmp COMM_LINE_END
 
-    COMM_LINE_PATTERN:
-    add si, 2
+    sub ax, 1                       ; if ax != 0
+    mov di, ax                      ; di = ax
+    shl di, 3                       ; di *= 8
+    add di, ax                      ; di += ax => di *= 9
+    lea si, [FRAME_PATTERN + di]    ; address to string
+    jmp COMM_LINE_END
+    COMM_LINE_PATTERN:  ; if ax == 0
+    call SKIP_SPACES    ; si = first not space symbol
     COMM_LINE_END:
 
-    pop ax
-    shl ax, 8
+    push si             ; save si with frame pattern address
+    mov si, dx          ; return si index from dx to th
+    call SKIP_SPACES    ; TODO: make offset after frame pattern
+    mov dx, si          ; save addr of string to dx
 
-    pop dx
+    pop si
+
+    pop ax
     pop di
     ret
     endp
 ;-----------------------------------------
+
+;-----------------------------------------
+; Put string at es:[di] with length of cx
+; Destr: al, cx, di, si
+;-----------------------------------------
+PRINT_STRING proc
+    PRINT_STRING_LOOP:
+    lodsb
+    stosw
+    loop PRINT_STRING_LOOP
+    ret
+    endp
+;-----------------------------------------
+
 
 MAIN:
     cld                            ; for correct work string functions
@@ -211,11 +235,15 @@ MAIN:
 
     call DRAW_FRAME
 
+    mov cx, 6
+    mov di, (7 * 80 * 2) + 5 * 2
+    mov si, offset FRAME_PATTERN + 9
+    call PRINT_STRING
     ; Finish Programm
     mov ax, 4c00h			; ax = 4c00h
 	int 21h
 
 FRAME_PATTERN: db '123456789'
                db '+-+| |+-+'
-
+               db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch
 end Start

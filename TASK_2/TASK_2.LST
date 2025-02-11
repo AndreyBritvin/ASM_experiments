@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/10/25 24:04:43	    Page 1
+Turbo Assembler	 Version 4.1	    02/11/25 20:49:46	    Page 1
 task_2.asm
 
 
@@ -6,7 +6,7 @@ task_2.asm
       1	0000			     .model tiny
       2	0000			     .code
       3				     org 100h
-      4	0100  E9 00DD		     Start: jmp	MAIN
+      4	0100  E9 00EB		     Start: jmp	MAIN
       5
       6				     ;-----------------------------------------
       7				     ; Initialise screen address to es
@@ -46,9 +46,9 @@ task_2.asm
      41
      42				     ;-----------------------------------------
      43				     ; Put frame at es:[di], where first line	ds:[si]	    ---	ds:[si + 2]
-     44				     ;				   second, etc	ds:[si + 3] ---	ds:[si + 5] and	print it cx times
+     44				     ;				   second, etc	ds:[si + 3] ---	ds:[si + 5] and	print it bx times
      45				     ;				   last	is	ds:[si + 6] ---	ds:[si + 8]
-     46				     ; Destr:	 al, bx, cx, di
+     46				     ; Destr:	 al, bx, cx, di, si
      47				     ;-----------------------------------------
      48	011B			     DRAW_FRAME	proc
      49	011B  E8 FFED			 call DRAW_LINE
@@ -60,7 +60,7 @@ task_2.asm
      55	0123  E8 FFE5			 call DRAW_LINE
      56	0126  5E			 pop si
      57	0127  4B			 dec bx
-Turbo Assembler	 Version 4.1	    02/10/25 24:04:43	    Page 2
+Turbo Assembler	 Version 4.1	    02/11/25 20:49:46	    Page 2
 task_2.asm
 
 
@@ -122,7 +122,7 @@ task_2.asm
     112	0167  80 F9 68			 cmp cl, 'h'
     113	016A  77 13			 ja ATOIHEX_END
     114	016C  EB 07 90			 jmp ATOIHEX_LETTER
-Turbo Assembler	 Version 4.1	    02/10/25 24:04:43	    Page 3
+Turbo Assembler	 Version 4.1	    02/11/25 20:49:46	    Page 3
 task_2.asm
 
 
@@ -149,101 +149,135 @@ task_2.asm
     134
     135				     ;-----------------------------------------
     136				     ; Skip spaces at ds:[si] by incrementing si
-    137				     ;-----------------------------------------
-    138	0181			     SKIP_SPACES proc
-    139	0181  51			 push cx
-    140	0182				 SKIP_SPACES_BEGIN:
-    141	0182  8A 0C			 mov cl, [si]
-    142	0184  80 F9 20			 cmp cl, ' '
-    143	0187  75 C3			 jne ATOI_END
-    144	0189  46			 inc si
-    145	018A  EB F6			 jmp SKIP_SPACES_BEGIN
-    146	018C				 SKIP_SPACES_END:
-    147	018C  59			 pop cx
-    148	018D  C3			 ret
-    149	018E				 endp
-    150				     ;-----------------------------------------
-    151
-    152				     ;-----------------------------------------
-    153				     ; Read string from	ds:[si]
-    154				     ; Destr: si
-    155				     ;-----------------------------------------
-    156	018E			     PARSE_COMMAND_LINE	proc
-    157	018E  57			 push di
-    158	018F  52			 push dx
-    159	0190  BE 0081			 mov si, 81h
-    160
-    161	0193  E8 FFEB			 call SKIP_SPACES
-    162	0196  E8 FF98			 call ATOI
-    163	0199  8B D8			 mov bx, ax	     ; get width TODO: move to another function
-    164
-    165	019B  E8 FFE3			 call SKIP_SPACES
-    166	019E  E8 FF90			 call ATOI
-    167	01A1  8B C8			 mov cx, ax	     ; get height
-    168
-    169	01A3  E8 FFDB			 call SKIP_SPACES
-    170	01A6  E8 FFA5			 call ATOIHEX
-    171					 ; mov dx, ax	       ; save reigster ax in dx
-Turbo Assembler	 Version 4.1	    02/10/25 24:04:43	    Page 4
+    137				     ; Destr: si
+    138				     ;-----------------------------------------
+    139	0181			     SKIP_SPACES proc
+    140	0181  51			 push cx
+    141	0182				 SKIP_SPACES_BEGIN:
+    142	0182  8A 0C			 mov cl, [si]
+    143	0184  80 F9 20			 cmp cl, ' '
+    144	0187  75 C3			 jne ATOI_END
+    145	0189  46			 inc si
+    146	018A  EB F6			 jmp SKIP_SPACES_BEGIN
+    147	018C				 SKIP_SPACES_END:
+    148	018C  59			 pop cx
+    149	018D  C3			 ret
+    150	018E				 endp
+    151				     ;-----------------------------------------
+    152
+    153				     ;-----------------------------------------
+    154				     ; Read string from	ds:[si]
+    155				     ; Ret: ah - color scheme
+    156				     ;	    bx - height
+    157				     ;	    cx - width
+    158				     ;	    dx - addr of text_str
+    159				     ;	    si - addr of frame_pattern
+    160				     ; Destr: ax, bx, cx, dx, si
+    161				     ;-----------------------------------------
+    162	018E			     PARSE_COMMAND_LINE	proc
+    163	018E  57			 push di
+    164	018F  BE 0081			 mov si, 81h
+    165
+    166	0192  E8 FFEC			 call SKIP_SPACES
+    167	0195  E8 FF99			 call ATOI
+    168	0198  8B D8			 mov bx, ax	     ; get width TODO: move to another function
+    169
+    170	019A  E8 FFE4			 call SKIP_SPACES
+    171	019D  E8 FF91			 call ATOI
+Turbo Assembler	 Version 4.1	    02/11/25 20:49:46	    Page 4
 task_2.asm
 
 
 
-    172	01A9  50			 push ax
-    173	01AA  E8 FFD4			 call SKIP_SPACES
-    174	01AD  E8 FF81			 call ATOI
-    175	01B0  3D 0000			 cmp ax, 0
-    176	01B3  74 14			 je COMM_LINE_PATTERN
-    177	01B5  2D 0001			 sub ax, 1
-    178	01B8  8B F8			 mov di, ax
-    179	01BA  D1 E7 D1 E7 D1 E7		 shl di, 3
-    180	01C0  03 F8			 add di, ax
-    181	01C2  8D B5 01F8r		 lea si, [FRAME_PATTERN	+ di]
-    182					 ; mov si, offset FRAME_PATTERN
-    183	01C6  EB 04 90			 jmp COMM_LINE_END
-    184
-    185	01C9				 COMM_LINE_PATTERN:
-    186	01C9  83 C6 02			 add si, 2
-    187	01CC				 COMM_LINE_END:
-    188
-    189	01CC  58			 pop ax
-    190	01CD  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 8
-    191	      E0 D1 E0 D1 E0 D1	E0+
-    192	      D1 E0
-    193
-    194	01DD  5A			 pop dx
-    195	01DE  5F			 pop di
-    196	01DF  C3			 ret
-    197	01E0				 endp
-    198				     ;-----------------------------------------
-    199
-    200	01E0			     MAIN:
-    201	01E0  FC			 cld				; for correct work string functions
-    202	01E1  E8 FF1F			 call INIT_SCREEN
-    203	01E4  E8 FFA7			 call PARSE_COMMAND_LINE
-    204					 ; mov si, offset FRAME_PATTERN	; set character	data
-    205
-    206	01E7  BF 0326			 mov di, (5 * 80 * 2) +	3 * 2 ;	initial	offset
-    207					 ; mov ah, 1101010b	   ; set color mode
-    208					 ; mov bx, 5 ; width
-    209					 ; mov cx, 8 ; height
-    210
-    211	01EA  83 EB 02			 sub bx, 2 ;
-    212	01ED  83 E9 02			 sub cx, 2 ; decrease to include border	in number
-    213
-    214	01F0  E8 FF28			 call DRAW_FRAME
-    215
-    216					 ; Finish Programm
-    217	01F3  B8 4C00			 mov ax, 4c00h			     ; ax = 4c00h
-    218	01F6  CD 21			     int 21h
-    219
-    220	01F8  31 32 33 34 35 36	37+  FRAME_PATTERN: db '123456789'
-    221	      38 39
-    222	0201  2B 2D 2B 7C 20 7C	2B+		    db '+-+| |+-+'
-    223	      2D 2B
-    224
-    225				     end Start
-Turbo Assembler	 Version 4.1	    02/10/25 24:04:43	    Page 5
+    172	01A0  8B C8			 mov cx, ax	     ; get height
+    173
+    174	01A2  E8 FFDC			 call SKIP_SPACES
+    175	01A5  E8 FFA6			 call ATOIHEX
+    176	01A8  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 8   ; shift color scheme to ah
+    177	      E0 D1 E0 D1 E0 D1	E0+
+    178	      D1 E0
+    179	01B8  50			 push ax     ; save ax with color scheme
+    180	01B9  8B D6			 mov dx, si  ; save si in dx
+    181
+    182	01BB  E8 FFC3			 call SKIP_SPACES
+    183	01BE  E8 FF70			 call ATOI
+    184	01C1  3D 0000			 cmp ax, 0
+    185	01C4  74 14			 je COMM_LINE_PATTERN
+    186
+    187	01C6  2D 0001			 sub ax, 1			 ; if ax != 0
+    188	01C9  8B F8			 mov di, ax			 ; di =	ax
+    189	01CB  D1 E7 D1 E7 D1 E7		 shl di, 3			 ; di *= 8
+    190	01D1  03 F8			 add di, ax			 ; di += ax => di *= 9
+    191	01D3  8D B5 0212r		 lea si, [FRAME_PATTERN	+ di]	 ; address to string
+    192	01D7  EB 04 90			 jmp COMM_LINE_END
+    193	01DA				 COMM_LINE_PATTERN:  ; if ax ==	0
+    194	01DA  E8 FFA4			 call SKIP_SPACES    ; si = first not space symbol
+    195	01DD				 COMM_LINE_END:
+    196
+    197	01DD  56			 push si	     ; save si with frame pattern address
+    198	01DE  8B F2			 mov si, dx	     ; return si index from dx to th
+    199	01E0  E8 FF9E			 call SKIP_SPACES    ; TODO: make offset after frame pattern
+    200	01E3  8B D6			 mov dx, si	     ; save addr of string to dx
+    201
+    202	01E5  5E			 pop si
+    203
+    204	01E6  58			 pop ax
+    205	01E7  5F			 pop di
+    206	01E8  C3			 ret
+    207	01E9				 endp
+    208				     ;-----------------------------------------
+    209
+    210				     ;-----------------------------------------
+    211				     ; Put string at es:[di] with length of cx
+    212				     ; Destr: al, cx, di, si
+    213				     ;-----------------------------------------
+    214	01E9			     PRINT_STRING proc
+    215	01E9				 PRINT_STRING_LOOP:
+    216	01E9  AC			 lodsb
+    217	01EA  AB			 stosw
+    218	01EB  E2 FC			 loop PRINT_STRING_LOOP
+    219	01ED  C3			 ret
+    220	01EE				 endp
+    221				     ;-----------------------------------------
+    222
+    223
+    224	01EE			     MAIN:
+    225	01EE  FC			 cld				; for correct work string functions
+    226	01EF  E8 FF11			 call INIT_SCREEN
+    227	01F2  E8 FF99			 call PARSE_COMMAND_LINE
+    228					 ; mov si, offset FRAME_PATTERN	; set character	data
+Turbo Assembler	 Version 4.1	    02/11/25 20:49:46	    Page 5
+task_2.asm
+
+
+
+    229
+    230	01F5  BF 0326			 mov di, (5 * 80 * 2) +	3 * 2 ;	initial	offset
+    231					 ; mov ah, 1101010b	   ; set color mode
+    232					 ; mov bx, 5 ; width
+    233					 ; mov cx, 8 ; height
+    234
+    235	01F8  83 EB 02			 sub bx, 2 ;
+    236	01FB  83 E9 02			 sub cx, 2 ; decrease to include border	in number
+    237
+    238	01FE  E8 FF1A			 call DRAW_FRAME
+    239
+    240	0201  B9 0006			 mov cx, 6
+    241	0204  BF 046A			 mov di, (7 * 80 * 2) +	5 * 2
+    242	0207  BE 021Br			 mov si, offset	FRAME_PATTERN +	9
+    243	020A  E8 FFDC			 call PRINT_STRING
+    244					 ; Finish Programm
+    245	020D  B8 4C00			 mov ax, 4c00h			     ; ax = 4c00h
+    246	0210  CD 21			     int 21h
+    247
+    248	0212  31 32 33 34 35 36	37+  FRAME_PATTERN: db '123456789'
+    249	      38 39
+    250	021B  2B 2D 2B 7C 20 7C	2B+		    db '+-+| |+-+'
+    251	      2D 2B
+    252	0224  C9 CD BB BA 20 BA	C8+		    db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h,	0cdh, 0bch
+    253	      CD BC
+    254				     end Start
+Turbo Assembler	 Version 4.1	    02/11/25 20:49:46	    Page 6
 Symbol Table
 
 
@@ -251,9 +285,9 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "02/10/25"
+??DATE				  Text	 "02/11/25"
 ??FILENAME			  Text	 "task_2  "
-??TIME				  Text	 "24:04:42"
+??TIME				  Text	 "20:49:46"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
@@ -277,16 +311,18 @@ ATOIHEX_MULT			  Near	 DGROUP:0178
 ATOIHEX_READ_SYMBOL		  Near	 DGROUP:0153
 ATOI_END			  Near	 DGROUP:014C
 ATOI_READ_SYMBOL		  Near	 DGROUP:0136
-COMM_LINE_END			  Near	 DGROUP:01CC
-COMM_LINE_PATTERN		  Near	 DGROUP:01C9
+COMM_LINE_END			  Near	 DGROUP:01DD
+COMM_LINE_PATTERN		  Near	 DGROUP:01DA
 DRAW_FRAME			  Near	 DGROUP:011B
 DRAW_LINE			  Near	 DGROUP:010B
 DRAW_N_LINES			  Near	 DGROUP:011E
 DRAW_N_LINES_END		  Near	 DGROUP:012A
-FRAME_PATTERN			  Near	 DGROUP:01F8
+FRAME_PATTERN			  Near	 DGROUP:0212
 INIT_SCREEN			  Near	 DGROUP:0103
-MAIN				  Near	 DGROUP:01E0
+MAIN				  Near	 DGROUP:01EE
 PARSE_COMMAND_LINE		  Near	 DGROUP:018E
+PRINT_STRING			  Near	 DGROUP:01E9
+PRINT_STRING_LOOP		  Near	 DGROUP:01E9
 SKIP_SPACES			  Near	 DGROUP:0181
 SKIP_SPACES_BEGIN		  Near	 DGROUP:0182
 SKIP_SPACES_END			  Near	 DGROUP:018C
@@ -296,5 +332,5 @@ Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  020A Word	  Public  CODE
+  _TEXT				  16  022D Word	  Public  CODE
 
