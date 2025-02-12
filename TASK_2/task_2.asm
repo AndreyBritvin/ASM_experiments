@@ -97,7 +97,7 @@ ATOI proc
 ATOIHEX proc
     push cx
     xor ax, ax      ; ax = 0
-    mov ch, 16      ; TODO: fix via shifting
+
     ATOIHEX_READ_SYMBOL:
     mov cl, [si]
     cmp cl, '0'
@@ -121,7 +121,7 @@ ATOIHEX proc
     sub cl, 'a' - 10
 
     ATOIHEX_MULT:
-    mul ch
+    shl ax, 4
     add al, cl
     inc si
     jmp ATOIHEX_READ_SYMBOL
@@ -175,26 +175,43 @@ PARSE_COMMAND_LINE proc
     call ATOIHEX
     shl ax, 8   ; shift color scheme to ah
     push ax     ; save ax with color scheme
-    mov dx, si  ; save si in dx
 
     call SKIP_SPACES
-    call ATOI
+    call ATOI                       ; get pattern number (0 - custom, next - as in programm at FRAME_PATTERN)
+    mov dx, si  ; save si in dx
     cmp ax, 0
     je COMM_LINE_PATTERN
 
-    sub ax, 1                       ; if ax != 0
+    sub ax, 1                       ; if ax != 0 : ax-- to get correct offset TODO: redo with dec
     mov di, ax                      ; di = ax
     shl di, 3                       ; di *= 8
     add di, ax                      ; di += ax => di *= 9
-    lea si, [FRAME_PATTERN + di]    ; address to string
+    lea si, [FRAME_PATTERN + di]    ; address to constant (hardcoded) string with pattern
+    inc ax                          ; return ax to non zero to be sure for correct algorithm next
     jmp COMM_LINE_END
-    COMM_LINE_PATTERN:  ; if ax == 0
+
+    COMM_LINE_PATTERN:  ; if ax == 0 === custom frame_pattern
     call SKIP_SPACES    ; si = first not space symbol
+
     COMM_LINE_END:
 
     push si             ; save si with frame pattern address
-    mov si, dx          ; return si index from dx to th
-    call SKIP_SPACES    ; TODO: make offset after frame pattern
+
+    ; now need to find string which will be inside frame
+    mov si, dx          ; return si index from dx to si to continue command line parsing
+    call SKIP_SPACES    ; skip spaces to first nonspaceable
+    cmp ax, 0           ;
+    je COMM_LINE_CUSTOM_PATTERN
+    call SKIP_SPACES          ; if ax != 0 it means that printable string exactly after the offset-number
+    jmp COMM_LINE_CUSTOM_PATTERN_END
+
+    COMM_LINE_CUSTOM_PATTERN: ; if ax == 0 (custom line)
+    mov al, ' '
+    call STRLEN               ; find length of pattern (usually 9, but can be more)
+    add si, cx                ; add this length offset to si
+    call SKIP_SPACES          ; and skip spaces to next nonspaceable symbol
+    COMM_LINE_CUSTOM_PATTERN_END:
+
     mov dx, si          ; save addr of string to dx
 
     pop si
@@ -210,10 +227,37 @@ PARSE_COMMAND_LINE proc
 ; Destr: al, cx, di, si
 ;-----------------------------------------
 PRINT_STRING proc
+    push ax             ; to save color scheme
+    mov al, 0Dh         ; 0d = \n TODO: fix this??? Not universal function
+    call STRLEN         ; put length in cx
+    pop ax
     PRINT_STRING_LOOP:
     lodsb
     stosw
     loop PRINT_STRING_LOOP
+    ret
+    endp
+;-----------------------------------------
+
+;-----------------------------------------
+; Count length of string from ds:[si] and puts it in cx, terminal symbol should be in al
+; Ret: cx - length of string
+; Destr: ax, cx
+;-----------------------------------------
+STRLEN proc
+    push es
+    push di
+    push bx
+    mov di, si      ; di = si, for scasb
+    mov bx, ds
+    mov es, bx      ; es = ds, for scasb
+    mov cx, -1      ; cx = FFFF
+    repne scasb     ; while (cx-- != 0 && ZF == 0): ZF = (al == ES:[DI++])
+    neg cx
+    dec cx          ; return cx to normal positive value
+    pop bx
+    pop di
+    pop es
     ret
     endp
 ;-----------------------------------------
@@ -237,7 +281,7 @@ MAIN:
 
     mov cx, 6
     mov di, (7 * 80 * 2) + 5 * 2
-    mov si, offset FRAME_PATTERN + 9
+    mov si, dx
     call PRINT_STRING
     ; Finish Programm
     mov ax, 4c00h			; ax = 4c00h
