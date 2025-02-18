@@ -2,6 +2,40 @@
 .code
 org 100h
 Start: jmp MAIN
+;@@, macro endm, equ,
+
+;-------------CONSTANTS_BEGIN-------------------
+VIDEO_MEMORY_SEGMENT_ADDR   equ 0b800h
+BYTES_PER_SYMBOL            equ 2
+SCREEN_WIDTH                equ 80
+PATTERN_OFFSET              equ 3
+COMMAND_LINE_BEGIN_ADDRESS  equ 81h
+;--------------CONSTANTS_END--------------------
+
+;-----------------------------------------
+; Calls on int 09h, checks if scan-code is 'e' and enable/disable frame
+; Return: nothing
+; Destr: nothing
+;-----------------------------------------
+FRAME_ENABLE_INT proc
+    push ax bx es
+    mov ax, VIDEO_MEMORY_SEGMENT_ADDR
+    mov es, ax
+    mov ah, 4eh
+    mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
+
+    in al, 60h
+    mov es:[bx], ax
+
+    pop es bx ax
+    db 0eah
+Original_int09h_handler_offset:
+    dw 0
+Original_int09h_handler_segment:
+    dw 0
+Active: db 0
+    endp
+;-----------------------------------------
 
 ;-----------------------------------------
 ; Initialise screen address to es
@@ -10,7 +44,7 @@ Start: jmp MAIN
 ;-----------------------------------------
 INIT_SCREEN proc
     push bx
-    mov bx, 0b800h
+    mov bx, VIDEO_MEMORY_SEGMENT_ADDR
     mov es, bx
     pop bx
     ret
@@ -34,7 +68,7 @@ DRAW_LINE proc
     stosw
     pop cx
     pop di
-    add di, 80 * 2
+    add di, SCREEN_WIDTH * BYTES_PER_SYMBOL
     ret
     endp
 ;-----------------------------------------
@@ -58,7 +92,7 @@ DRAW_FRAME proc
     jmp DRAW_N_LINES
     DRAW_N_LINES_END:
 
-    add si, 3
+    add si, PATTERN_OFFSET
     call DRAW_LINE
     ret
     endp
@@ -71,7 +105,7 @@ DRAW_FRAME proc
 ATOI proc
     push cx
     xor ax, ax      ; ax = 0
-    mov ch, 10
+    mov ch, 10      ; multiplyer
 
     ATOI_READ_SYMBOL:
     mov cl, [si]
@@ -141,7 +175,7 @@ SKIP_SPACES proc
     SKIP_SPACES_BEGIN:
     mov cl, [si]
     cmp cl, ' '
-    jne ATOI_END
+    jne SKIP_SPACES_END
     inc si
     jmp SKIP_SPACES_BEGIN
     SKIP_SPACES_END:
@@ -161,7 +195,7 @@ SKIP_SPACES proc
 ;-----------------------------------------
 PARSE_COMMAND_LINE proc
     push di
-    mov si, 81h
+    mov si, COMMAND_LINE_BEGIN_ADDRESS
 
     call SKIP_SPACES
     call ATOI
@@ -182,7 +216,7 @@ PARSE_COMMAND_LINE proc
     cmp ax, 0
     je COMM_LINE_PATTERN
 
-    sub ax, 1                       ; if ax != 0 : ax-- to get correct offset TODO: redo with dec
+    dec ax                          ; if ax != 0 : ax-- to get correct offset
     mov di, ax                      ; di = ax
     shl di, 3                       ; di *= 8
     add di, ax                      ; di += ax => di *= 9
@@ -228,9 +262,10 @@ PARSE_COMMAND_LINE proc
 ;-----------------------------------------
 PRINT_STRING proc
     push ax             ; to save color scheme
-    mov al, 0Dh         ; 0d = \n TODO: fix this??? Not universal function
+    mov al, 0dh         ; 0d = \n TODO: fix this??? Not universal function
     call STRLEN         ; put length in cx
     pop ax
+    dec cx              ; not print \n
     PRINT_STRING_LOOP:
     lodsb
     stosw
@@ -264,12 +299,38 @@ STRLEN proc
 
 
 MAIN:
+    xor ax, ax                      ; TODO: move to function 'INIT_RESIDENT'
+    mov es, ax                      ; TODO: redo via int 25h
+    mov bx, 09h * 4
+
+    mov ax, es:[bx]
+    mov word ptr Original_int09h_handler_offset, ax
+    mov ax, es:[bx + 2]
+    mov word ptr Original_int09h_handler_segment, ax
+
+    cli
+    mov es:[bx], offset FRAME_ENABLE_INT
+    push cs
+    pop ax
+    mov es:[bx + 2], ax
+    sti
+
+    mov ax, 3100h
+    mov dx, offset END_OF_PROGRAMM
+    shr dx, 4
+    inc dx
+    int 21h
+
     cld                            ; for correct work string functions
+    mov ax, 1003h
+    mov bl, 0h
+    int 10h
+
     call INIT_SCREEN
     call PARSE_COMMAND_LINE
     ; mov si, offset FRAME_PATTERN ; set character data
 
-    mov di, (5 * 80 * 2) + 3 * 2 ; initial offset
+    mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ; initial offset
     ; mov ah, 1101010b        ; set color mode
     ; mov bx, 5 ; width
     ; mov cx, 8 ; height
@@ -280,14 +341,16 @@ MAIN:
     call DRAW_FRAME
 
     mov cx, 6
-    mov di, (7 * 80 * 2) + 5 * 2
+    mov di, (7 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 5 * BYTES_PER_SYMBOL
     mov si, dx
     call PRINT_STRING
     ; Finish Programm
     mov ax, 4c00h			; ax = 4c00h
-	int 21h
+	int 21h                 ; exit(al) = exit(0)
 
-FRAME_PATTERN: db '123456789'
-               db '+-+| |+-+'
-               db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch
+END_OF_PROGRAMM:            ; TODO: optimise and make resident memory-economly
+FRAME_PATTERN: db '123456789'                                           ; debug
+               db '+-+| |+-+'                                           ; cool
+               db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch   ; stripes
+               db 04h, 03h, 04h, 03h, ' ', 03h, 04h, 03h, 04h           ; hearts
 end Start
