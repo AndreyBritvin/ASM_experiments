@@ -58,25 +58,28 @@ FRAME_UPDATE_INT proc
     push bx cx dx di si es ds
     push cs
     pop ds
-    cld                             ; for correct work string functions
-    mov ax, 1003h                 ; set video memory highest blink for blinking or for high contrast
+    cld                              ; for correct work string functions
+    mov ax, 1003h                    ; set video memory highest blink for blinking or for high contrast
     mov bl, 0h
     int 10h
 
     call INIT_SCREEN
     ; call PARSE_COMMAND_LINE
-    mov si, offset FRAME_PATTERN ; set character data
+    mov si, offset FRAME_PATTERN + 9 ; set character data
 
     mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ; initial offset
     mov ah, 1101010b            ; set color mode
-    mov bx, 8                   ; width
-    mov cx, 5                   ; height
+    mov bx, 6                   ; height
+    mov cx, 9                   ; width
 
     sub bx, 2 ;
     sub cx, 2 ; decrease to include border in number
 
     call DRAW_FRAME
 
+    ; TODO: make constants to offset XY
+    mov di, (6 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 4 * BYTES_PER_SYMBOL ; initial offset
+    call PRINT_REGISTERS
     ; mov cx, 6
     ; mov di, (7 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 5 * BYTES_PER_SYMBOL
     ; mov si, dx
@@ -91,6 +94,38 @@ Original_int08h_handler_offset:
 Original_int08h_handler_segment:
     dw 0
     endp
+;-----------------------------------------
+
+;-----------------------------------------
+; Prints every register value
+; Return: nothing
+; Destr: al, cx, si, di
+;-----------------------------------------
+PRINT_REGISTERS proc
+    mov cx, 4
+    mov si, offset REG_PATTERN
+@@PRINT_REG:
+    push di
+    lodsb
+    stosw
+    lodsb
+    stosw
+    lodsb
+    stosw       ; print ax_ (space)
+    mov al, 'A'
+    stosw
+    mov al, 'B'
+    stosw
+    mov al, 'C'
+    stosw
+    mov al, 'D'
+    stosw       ; print value
+    pop di
+    add di, SCREEN_WIDTH * BYTES_PER_SYMBOL
+    loop @@PRINT_REG
+    ret
+    endp
+REG_PATTERN: db "ax bx cx dx "
 ;-----------------------------------------
 
 ;-----------------------------------------
@@ -397,9 +432,10 @@ MAIN:
     ; Finish Programm
     call MAKE_RESIDENT
 
-END_OF_PROGRAMM:            ; TODO: optimise and make resident memory-economly
 FRAME_PATTERN: db '123456789'                                           ; debug
                db '+-+| |+-+'                                           ; cool
                db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch   ; stripes
                db 04h, 03h, 04h, 03h, ' ', 03h, 04h, 03h, 04h           ; hearts
+END_OF_PROGRAMM:            ; TODO: optimise and make resident memory-economly
+                            ; NB! DONT FORGET TO REPLACE PATTERN CLOSER TO RESIDENTAL PART
 end Start
