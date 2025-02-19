@@ -25,11 +25,13 @@ FRAME_ENABLE_INT proc
     mov ah, 4eh
     mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
     in al, 60h
-    mov es:[bx], ax
 
     cmp al, 12h
     jne @@ANOTHER_BUTTON
-    xor byte ptr IS_FRAME_ACTIVE, 1
+    mov es:[bx], ax
+    mov al, byte ptr cs:IS_FRAME_ACTIVE
+    xor al, 1
+    mov byte ptr cs:IS_FRAME_ACTIVE, al
     @@ANOTHER_BUTTON:
 
     pop es bx ax
@@ -43,20 +45,46 @@ IS_FRAME_ACTIVE: db 0
 ;-----------------------------------------
 
 ;-----------------------------------------
-; Calls on int 09h, checks if scan-code is 'e' and enable/disable frame
+; Calls on int 08h, updates frame if enabled every 55ms
 ; Return: nothing
 ; Destr: nothing
 ;-----------------------------------------
 FRAME_UPDATE_INT proc
-    push ax bx es
-    mov ax, VIDEO_MEMORY_SEGMENT_ADDR
-    mov es, ax
-    mov ah, 4eh
-    mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
+    push ax
+    mov al, byte ptr cs:IS_FRAME_ACTIVE
+    cmp al, 1
+    jne @@DONT_SHOW_FRAME
 
-    @@ANOTHER_BUTTON:
+    push bx cx dx di si es ds
+    push cs
+    pop ds
+    cld                             ; for correct work string functions
+    mov ax, 1003h                 ; set video memory highest blink for blinking or for high contrast
+    mov bl, 0h
+    int 10h
 
-    pop es bx ax
+    call INIT_SCREEN
+    ; call PARSE_COMMAND_LINE
+    mov si, offset FRAME_PATTERN ; set character data
+
+    mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ; initial offset
+    mov ah, 1101010b            ; set color mode
+    mov bx, 8                   ; width
+    mov cx, 5                   ; height
+
+    sub bx, 2 ;
+    sub cx, 2 ; decrease to include border in number
+
+    call DRAW_FRAME
+
+    ; mov cx, 6
+    ; mov di, (7 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 5 * BYTES_PER_SYMBOL
+    ; mov si, dx
+    ; call PRINT_STRING
+
+    pop ds es si di dx cx bx
+    @@DONT_SHOW_FRAME:
+    pop ax
     db 0eah
 Original_int08h_handler_offset:
     dw 0
@@ -366,29 +394,6 @@ MAIN:
     mov di, offset Original_int08h_handler_offset
     call CREATE_ISR_CHAIN
 
-    cld                            ; for correct work string functions
-    mov ax, 1003h
-    mov bl, 0h
-    int 10h
-
-    call INIT_SCREEN
-    call PARSE_COMMAND_LINE
-    ; mov si, offset FRAME_PATTERN ; set character data
-
-    mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ; initial offset
-    ; mov ah, 1101010b        ; set color mode
-    ; mov bx, 5 ; width
-    ; mov cx, 8 ; height
-
-    sub bx, 2 ;
-    sub cx, 2 ; decrease to include border in number
-
-    call DRAW_FRAME
-
-    mov cx, 6
-    mov di, (7 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 5 * BYTES_PER_SYMBOL
-    mov si, dx
-    call PRINT_STRING
     ; Finish Programm
     call MAKE_RESIDENT
 
