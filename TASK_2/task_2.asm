@@ -1,6 +1,7 @@
 .model tiny
 .code
 org 100h
+locals @@
 Start: jmp MAIN
 ;@@, macro endm, equ,
 
@@ -23,9 +24,13 @@ FRAME_ENABLE_INT proc
     mov es, ax
     mov ah, 4eh
     mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
-
     in al, 60h
     mov es:[bx], ax
+
+    cmp al, 12h
+    jne @@ANOTHER_BUTTON
+    xor byte ptr IS_FRAME_ACTIVE, 1
+    @@ANOTHER_BUTTON:
 
     pop es bx ax
     db 0eah
@@ -33,7 +38,30 @@ Original_int09h_handler_offset:
     dw 0
 Original_int09h_handler_segment:
     dw 0
-Active: db 0
+IS_FRAME_ACTIVE: db 0
+    endp
+;-----------------------------------------
+
+;-----------------------------------------
+; Calls on int 09h, checks if scan-code is 'e' and enable/disable frame
+; Return: nothing
+; Destr: nothing
+;-----------------------------------------
+FRAME_UPDATE_INT proc
+    push ax bx es
+    mov ax, VIDEO_MEMORY_SEGMENT_ADDR
+    mov es, ax
+    mov ah, 4eh
+    mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
+
+    @@ANOTHER_BUTTON:
+
+    pop es bx ax
+    db 0eah
+Original_int08h_handler_offset:
+    dw 0
+Original_int08h_handler_segment:
+    dw 0
     endp
 ;-----------------------------------------
 
@@ -165,7 +193,7 @@ ATOIHEX proc
     ret
     endp
 ;-----------------------------------------
-
+; TODO: make itoa, interrupt 08h, using 'Active' var, finish task?
 ;-----------------------------------------
 ; Skip spaces at ds:[si] by incrementing si
 ; Destr: si
@@ -297,29 +325,46 @@ STRLEN proc
     endp
 ;-----------------------------------------
 
+;-----------------------------------------
+; Fills offset and segment of interrupt #al to [di] and [di + 2], and rewrites
+; in interrupt table with ds:[dx]. So dx should contain offset of our function
+; Destr: ah, bx, es
+;-----------------------------------------
+CREATE_ISR_CHAIN proc
+    mov ah, 35h                 ; call DOS Fn(35h) - to get current address
+    int 21h                     ; es:[bx] is current interrupt function
+    mov [di], bx                ; save address ofset
+    mov [di + 2], es            ; save segment
+    mov ah, 25h                 ;
+    int 21h                     ; call DOS Fn(25h), to put in interrupt table ds:[dx] address
+    ret
+    endp
+;-----------------------------------------
+
+;-----------------------------------------
+; Makes our programm resident and terminate programm
+; Destr: ax, dx
+;-----------------------------------------
+MAKE_RESIDENT proc
+    mov dx, offset END_OF_PROGRAMM      ; TODO: memory economy
+    shr dx, 4                           ;
+    inc dx
+    mov ax, 3100h                       ;
+    int 21h
+    ret
+    endp
+;-----------------------------------------
 
 MAIN:
-    xor ax, ax                      ; TODO: move to function 'INIT_RESIDENT'
-    mov es, ax                      ; TODO: redo via int 25h
-    mov bx, 09h * 4
+    mov al, 09h
+    mov dx, offset FRAME_ENABLE_INT
+    mov di, offset Original_int09h_handler_offset
+    call CREATE_ISR_CHAIN
 
-    mov ax, es:[bx]
-    mov word ptr Original_int09h_handler_offset, ax
-    mov ax, es:[bx + 2]
-    mov word ptr Original_int09h_handler_segment, ax
-
-    cli
-    mov es:[bx], offset FRAME_ENABLE_INT
-    push cs
-    pop ax
-    mov es:[bx + 2], ax
-    sti
-
-    mov ax, 3100h
-    mov dx, offset END_OF_PROGRAMM
-    shr dx, 4
-    inc dx
-    int 21h
+    mov al, 08h
+    mov dx, offset FRAME_UPDATE_INT
+    mov di, offset Original_int08h_handler_offset
+    call CREATE_ISR_CHAIN
 
     cld                            ; for correct work string functions
     mov ax, 1003h
@@ -345,8 +390,7 @@ MAIN:
     mov si, dx
     call PRINT_STRING
     ; Finish Programm
-    mov ax, 4c00h			; ax = 4c00h
-	int 21h                 ; exit(al) = exit(0)
+    call MAKE_RESIDENT
 
 END_OF_PROGRAMM:            ; TODO: optimise and make resident memory-economly
 FRAME_PATTERN: db '123456789'                                           ; debug

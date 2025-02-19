@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 1
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 1
 task_2.asm
 
 
@@ -6,401 +6,458 @@ task_2.asm
       1	0000			     .model tiny
       2	0000			     .code
       3				     org 100h
-      4	0100  E9 013B		     Start: jmp	MAIN
-      5				     ;@@, macro	endm, equ,
-      6
-      7				     ;-------------CONSTANTS_BEGIN-------------------
-      8	      =B800		     VIDEO_MEMORY_SEGMENT_ADDR	 equ 0b800h
-      9	      =0002		     BYTES_PER_SYMBOL		 equ 2
-     10	      =0050		     SCREEN_WIDTH		 equ 80
-     11	      =0003		     PATTERN_OFFSET		 equ 3
-     12	      =0081		     COMMAND_LINE_BEGIN_ADDRESS	 equ 81h
-     13				     ;--------------CONSTANTS_END--------------------
-     14
-     15				     ;-----------------------------------------
-     16				     ; Calls on	int 09h, checks	if scan-code is	'e' and	enable/disable frame
-     17				     ; Return: nothing
-     18				     ; Destr: nothing
-     19				     ;-----------------------------------------
-     20	0103			     FRAME_ENABLE_INT proc
-     21	0103  50 53 06			 push ax bx es
-     22	0106  B8 B800			 mov ax, VIDEO_MEMORY_SEGMENT_ADDR
-     23	0109  8E C0			 mov es, ax
-     24	010B  B4 4E			 mov ah, 4eh
-     25	010D  BB 0370			 mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
-     26
+      4				     locals @@
+      5	0100  E9 0179		     Start: jmp	MAIN
+      6				     ;@@, macro	endm, equ,
+      7
+      8				     ;-------------CONSTANTS_BEGIN-------------------
+      9	      =B800		     VIDEO_MEMORY_SEGMENT_ADDR	 equ 0b800h
+     10	      =0002		     BYTES_PER_SYMBOL		 equ 2
+     11	      =0050		     SCREEN_WIDTH		 equ 80
+     12	      =0003		     PATTERN_OFFSET		 equ 3
+     13	      =0081		     COMMAND_LINE_BEGIN_ADDRESS	 equ 81h
+     14				     ;--------------CONSTANTS_END--------------------
+     15
+     16				     ;-----------------------------------------
+     17				     ; Calls on	int 09h, checks	if scan-code is	'e' and	enable/disable frame
+     18				     ; Return: nothing
+     19				     ; Destr: nothing
+     20				     ;-----------------------------------------
+     21	0103			     FRAME_ENABLE_INT proc
+     22	0103  50 53 06			 push ax bx es
+     23	0106  B8 B800			 mov ax, VIDEO_MEMORY_SEGMENT_ADDR
+     24	0109  8E C0			 mov es, ax
+     25	010B  B4 4E			 mov ah, 4eh
+     26	010D  BB 0370			 mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
      27	0110  E4 60			 in al,	60h
      28	0112  26: 89 07			 mov es:[bx], ax
      29
-     30	0115  07 5B 58			 pop es	bx ax
-     31	0118  EA			 db 0eah
-     32	0119			     Original_int09h_handler_offset:
-     33	0119  0000			 dw 0
-     34	011B			     Original_int09h_handler_segment:
-     35	011B  0000			 dw 0
-     36	011D  00		     Active: db	0
-     37	011E				 endp
-     38				     ;-----------------------------------------
-     39
-     40				     ;-----------------------------------------
-     41				     ; Initialise screen address to es
-     42				     ; Return: nothing
-     43				     ; Destr: es
-     44				     ;-----------------------------------------
-     45	011E			     INIT_SCREEN proc
-     46	011E  53			 push bx
-     47	011F  BB B800			 mov bx, VIDEO_MEMORY_SEGMENT_ADDR
-     48	0122  8E C3			 mov es, bx
-     49	0124  5B			 pop bx
-     50	0125  C3			 ret
-     51	0126				 endp
-     52				     ;-----------------------------------------
-     53
-     54				     ;-----------------------------------------
-     55				     ; Put string at es:[di], where first  symbol ds:[si]
-     56				     ;				    second, etc	  ds:[si + 1] and print	it cx times
-     57				     ;				    last is	  ds:[si + 2]
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 2
+     30	0115  3C 12			 cmp al, 12h
+     31	0117  75 05			 jne @@ANOTHER_BUTTON
+     32	0119  80 36 0126r 01		 xor byte ptr IS_FRAME_ACTIVE, 1
+     33	011E				 @@ANOTHER_BUTTON:
+     34
+     35	011E  07 5B 58			 pop es	bx ax
+     36	0121  EA			 db 0eah
+     37	0122			     Original_int09h_handler_offset:
+     38	0122  0000			 dw 0
+     39	0124			     Original_int09h_handler_segment:
+     40	0124  0000			 dw 0
+     41	0126  00		     IS_FRAME_ACTIVE: db 0
+     42	0127				 endp
+     43				     ;-----------------------------------------
+     44
+     45				     ;-----------------------------------------
+     46				     ; Calls on	int 09h, checks	if scan-code is	'e' and	enable/disable frame
+     47				     ; Return: nothing
+     48				     ; Destr: nothing
+     49				     ;-----------------------------------------
+     50	0127			     FRAME_UPDATE_INT proc
+     51	0127  50 53 06			 push ax bx es
+     52	012A  B8 B800			 mov ax, VIDEO_MEMORY_SEGMENT_ADDR
+     53	012D  8E C0			 mov es, ax
+     54	012F  B4 4E			 mov ah, 4eh
+     55	0131  BB 0370			 mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
+     56
+     57	0134				 @@ANOTHER_BUTTON:
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 2
 task_2.asm
 
 
 
-     58				     ; Destr:	 al, di, si
-     59				     ;-----------------------------------------
-     60	0126			     DRAW_LINE proc
-     61	0126  57			 push di
-     62	0127  51			 push cx
-     63	0128  AC			 lodsb
-     64	0129  AB			 stosw
-     65	012A  AC			 lodsb
-     66	012B  F3> AB			 rep stosw
-     67	012D  AC			 lodsb
-     68	012E  AB			 stosw
-     69	012F  59			 pop cx
-     70	0130  5F			 pop di
-     71	0131  81 C7 00A0		 add di, SCREEN_WIDTH *	BYTES_PER_SYMBOL
-     72	0135  C3			 ret
-     73	0136				 endp
-     74				     ;-----------------------------------------
-     75
-     76				     ;-----------------------------------------
-     77				     ; Put frame at es:[di], where first line	ds:[si]	    ---	ds:[si + 2]
-     78				     ;				   second, etc	ds:[si + 3] ---	ds:[si + 5] and	print it bx times
-     79				     ;				   last	is	ds:[si + 6] ---	ds:[si + 8]
-     80				     ; Destr:	 al, bx, cx, di, si
-     81				     ;-----------------------------------------
-     82	0136			     DRAW_FRAME	proc
-     83	0136  E8 FFED			 call DRAW_LINE
-     84
-     85	0139				 DRAW_N_LINES:
-     86	0139  85 DB			 test bx, bx
-     87	013B  74 08			 jz DRAW_N_LINES_END
-     88	013D  56			 push si
-     89	013E  E8 FFE5			 call DRAW_LINE
-     90	0141  5E			 pop si
-     91	0142  4B			 dec bx
-     92	0143  EB F4			 jmp DRAW_N_LINES
-     93	0145				 DRAW_N_LINES_END:
-     94
-     95	0145  83 C6 03			 add si, PATTERN_OFFSET
-     96	0148  E8 FFDB			 call DRAW_LINE
-     97	014B  C3			 ret
-     98	014C				 endp
-     99				     ;-----------------------------------------
-    100
-    101				     ;-----------------------------------------
-    102				     ; Read number from	ds:[si]	and put	integer	result to ax
-    103				     ; Destr ax, si
+     58
+     59	0134  07 5B 58			 pop es	bx ax
+     60	0137  EA			 db 0eah
+     61	0138			     Original_int08h_handler_offset:
+     62	0138  0000			 dw 0
+     63	013A			     Original_int08h_handler_segment:
+     64	013A  0000			 dw 0
+     65	013C				 endp
+     66				     ;-----------------------------------------
+     67
+     68				     ;-----------------------------------------
+     69				     ; Initialise screen address to es
+     70				     ; Return: nothing
+     71				     ; Destr: es
+     72				     ;-----------------------------------------
+     73	013C			     INIT_SCREEN proc
+     74	013C  53			 push bx
+     75	013D  BB B800			 mov bx, VIDEO_MEMORY_SEGMENT_ADDR
+     76	0140  8E C3			 mov es, bx
+     77	0142  5B			 pop bx
+     78	0143  C3			 ret
+     79	0144				 endp
+     80				     ;-----------------------------------------
+     81
+     82				     ;-----------------------------------------
+     83				     ; Put string at es:[di], where first  symbol ds:[si]
+     84				     ;				    second, etc	  ds:[si + 1] and print	it cx times
+     85				     ;				    last is	  ds:[si + 2]
+     86				     ; Destr:	 al, di, si
+     87				     ;-----------------------------------------
+     88	0144			     DRAW_LINE proc
+     89	0144  57			 push di
+     90	0145  51			 push cx
+     91	0146  AC			 lodsb
+     92	0147  AB			 stosw
+     93	0148  AC			 lodsb
+     94	0149  F3> AB			 rep stosw
+     95	014B  AC			 lodsb
+     96	014C  AB			 stosw
+     97	014D  59			 pop cx
+     98	014E  5F			 pop di
+     99	014F  81 C7 00A0		 add di, SCREEN_WIDTH *	BYTES_PER_SYMBOL
+    100	0153  C3			 ret
+    101	0154				 endp
+    102				     ;-----------------------------------------
+    103
     104				     ;-----------------------------------------
-    105	014C			     ATOI proc
-    106	014C  51			 push cx
-    107	014D  33 C0			 xor ax, ax	 ; ax =	0
-    108	014F  B5 0A			 mov ch, 10	 ; multiplyer
-    109
-    110	0151				 ATOI_READ_SYMBOL:
-    111	0151  8A 0C			 mov cl, [si]
-    112	0153  80 F9 30			 cmp cl, '0'
-    113	0156  72 0F			 jb ATOI_END
-    114	0158  80 F9 39			 cmp cl, '9'
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 3
+    105				     ; Put frame at es:[di], where first line	ds:[si]	    ---	ds:[si + 2]
+    106				     ;				   second, etc	ds:[si + 3] ---	ds:[si + 5] and	print it bx times
+    107				     ;				   last	is	ds:[si + 6] ---	ds:[si + 8]
+    108				     ; Destr:	 al, bx, cx, di, si
+    109				     ;-----------------------------------------
+    110	0154			     DRAW_FRAME	proc
+    111	0154  E8 FFED			 call DRAW_LINE
+    112
+    113	0157				 DRAW_N_LINES:
+    114	0157  85 DB			 test bx, bx
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 3
 task_2.asm
 
 
 
-    115	015B  77 0A			 ja ATOI_END
-    116	015D  80 E9 30			 sub cl, '0'
-    117	0160  F6 E5			 mul ch
-    118	0162  02 C1			 add al, cl
-    119	0164  46			 inc si
-    120	0165  EB EA			 jmp ATOI_READ_SYMBOL
-    121	0167				 ATOI_END:
-    122	0167  59			 pop cx
-    123	0168  C3			 ret
-    124	0169				 endp
-    125				     ;-----------------------------------------
-    126
+    115	0159  74 08			 jz DRAW_N_LINES_END
+    116	015B  56			 push si
+    117	015C  E8 FFE5			 call DRAW_LINE
+    118	015F  5E			 pop si
+    119	0160  4B			 dec bx
+    120	0161  EB F4			 jmp DRAW_N_LINES
+    121	0163				 DRAW_N_LINES_END:
+    122
+    123	0163  83 C6 03			 add si, PATTERN_OFFSET
+    124	0166  E8 FFDB			 call DRAW_LINE
+    125	0169  C3			 ret
+    126	016A				 endp
     127				     ;-----------------------------------------
-    128				     ; Read number from	ds:[si]	and put	integer	hex result to ax
-    129				     ; Destr ax, si
-    130				     ;-----------------------------------------
-    131	0169			     ATOIHEX proc
-    132	0169  51			 push cx
-    133	016A  33 C0			 xor ax, ax	 ; ax =	0
-    134
-    135	016C				 ATOIHEX_READ_SYMBOL:
-    136	016C  8A 0C			 mov cl, [si]
-    137	016E  80 F9 30			 cmp cl, '0'
-    138	0171  72 08			 jb ATOIHEX_CHECK_LETTER
-    139	0173  80 F9 39			 cmp cl, '9'
-    140	0176  77 03			 ja ATOIHEX_CHECK_LETTER
-    141	0178  EB 0E 90			 jmp ATOIHEX_DIGIT
-    142
-    143	017B				 ATOIHEX_CHECK_LETTER:
-    144	017B  80 F9 61			 cmp cl, 'a'
-    145	017E  72 1E			 jb ATOIHEX_END
-    146	0180  80 F9 68			 cmp cl, 'h'
-    147	0183  77 19			 ja ATOIHEX_END
-    148	0185  EB 07 90			 jmp ATOIHEX_LETTER
-    149
-    150	0188				 ATOIHEX_DIGIT:
-    151	0188  80 E9 30			 sub cl, '0'
-    152	018B  EB 04 90			 jmp ATOIHEX_MULT
-    153
-    154	018E				 ATOIHEX_LETTER:
-    155	018E  80 E9 57			 sub cl, 'a' - 10
-    156
-    157	0191				 ATOIHEX_MULT:
-    158	0191  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 4
-    159	      E0
-    160	0199  02 C1			 add al, cl
-    161	019B  46			 inc si
-    162	019C  EB CE			 jmp ATOIHEX_READ_SYMBOL
-    163
-    164	019E				 ATOIHEX_END:
-    165	019E  59			 pop cx
-    166	019F  C3			 ret
-    167	01A0				 endp
-    168				     ;-----------------------------------------
-    169
-    170				     ;-----------------------------------------
-    171				     ; Skip spaces at ds:[si] by incrementing si
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 4
+    128
+    129				     ;-----------------------------------------
+    130				     ; Read number from	ds:[si]	and put	integer	result to ax
+    131				     ; Destr ax, si
+    132				     ;-----------------------------------------
+    133	016A			     ATOI proc
+    134	016A  51			 push cx
+    135	016B  33 C0			 xor ax, ax	 ; ax =	0
+    136	016D  B5 0A			 mov ch, 10	 ; multiplyer
+    137
+    138	016F				 ATOI_READ_SYMBOL:
+    139	016F  8A 0C			 mov cl, [si]
+    140	0171  80 F9 30			 cmp cl, '0'
+    141	0174  72 0F			 jb ATOI_END
+    142	0176  80 F9 39			 cmp cl, '9'
+    143	0179  77 0A			 ja ATOI_END
+    144	017B  80 E9 30			 sub cl, '0'
+    145	017E  F6 E5			 mul ch
+    146	0180  02 C1			 add al, cl
+    147	0182  46			 inc si
+    148	0183  EB EA			 jmp ATOI_READ_SYMBOL
+    149	0185				 ATOI_END:
+    150	0185  59			 pop cx
+    151	0186  C3			 ret
+    152	0187				 endp
+    153				     ;-----------------------------------------
+    154
+    155				     ;-----------------------------------------
+    156				     ; Read number from	ds:[si]	and put	integer	hex result to ax
+    157				     ; Destr ax, si
+    158				     ;-----------------------------------------
+    159	0187			     ATOIHEX proc
+    160	0187  51			 push cx
+    161	0188  33 C0			 xor ax, ax	 ; ax =	0
+    162
+    163	018A				 ATOIHEX_READ_SYMBOL:
+    164	018A  8A 0C			 mov cl, [si]
+    165	018C  80 F9 30			 cmp cl, '0'
+    166	018F  72 08			 jb ATOIHEX_CHECK_LETTER
+    167	0191  80 F9 39			 cmp cl, '9'
+    168	0194  77 03			 ja ATOIHEX_CHECK_LETTER
+    169	0196  EB 0E 90			 jmp ATOIHEX_DIGIT
+    170
+    171	0199				 ATOIHEX_CHECK_LETTER:
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 4
 task_2.asm
 
 
 
-    172				     ; Destr: si
-    173				     ;-----------------------------------------
-    174	01A0			     SKIP_SPACES proc
-    175	01A0  51			 push cx
-    176	01A1				 SKIP_SPACES_BEGIN:
-    177	01A1  8A 0C			 mov cl, [si]
-    178	01A3  80 F9 20			 cmp cl, ' '
-    179	01A6  75 03			 jne SKIP_SPACES_END
-    180	01A8  46			 inc si
-    181	01A9  EB F6			 jmp SKIP_SPACES_BEGIN
-    182	01AB				 SKIP_SPACES_END:
-    183	01AB  59			 pop cx
-    184	01AC  C3			 ret
-    185	01AD				 endp
-    186				     ;-----------------------------------------
-    187
-    188				     ;-----------------------------------------
-    189				     ; Read string from	ds:[si]
-    190				     ; Ret: ah - color scheme
-    191				     ;	    bx - height
-    192				     ;	    cx - width
-    193				     ;	    dx - addr of text_str
-    194				     ;	    si - addr of frame_pattern
-    195				     ; Destr: ax, bx, cx, dx, si
+    172	0199  80 F9 61			 cmp cl, 'a'
+    173	019C  72 1E			 jb ATOIHEX_END
+    174	019E  80 F9 68			 cmp cl, 'h'
+    175	01A1  77 19			 ja ATOIHEX_END
+    176	01A3  EB 07 90			 jmp ATOIHEX_LETTER
+    177
+    178	01A6				 ATOIHEX_DIGIT:
+    179	01A6  80 E9 30			 sub cl, '0'
+    180	01A9  EB 04 90			 jmp ATOIHEX_MULT
+    181
+    182	01AC				 ATOIHEX_LETTER:
+    183	01AC  80 E9 57			 sub cl, 'a' - 10
+    184
+    185	01AF				 ATOIHEX_MULT:
+    186	01AF  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 4
+    187	      E0
+    188	01B7  02 C1			 add al, cl
+    189	01B9  46			 inc si
+    190	01BA  EB CE			 jmp ATOIHEX_READ_SYMBOL
+    191
+    192	01BC				 ATOIHEX_END:
+    193	01BC  59			 pop cx
+    194	01BD  C3			 ret
+    195	01BE				 endp
     196				     ;-----------------------------------------
-    197	01AD			     PARSE_COMMAND_LINE	proc
-    198	01AD  57			 push di
-    199	01AE  BE 0081			 mov si, COMMAND_LINE_BEGIN_ADDRESS
-    200
-    201	01B1  E8 FFEC			 call SKIP_SPACES
-    202	01B4  E8 FF95			 call ATOI
-    203	01B7  8B D8			 mov bx, ax	     ; get width TODO: move to another function
-    204
-    205	01B9  E8 FFE4			 call SKIP_SPACES
-    206	01BC  E8 FF8D			 call ATOI
-    207	01BF  8B C8			 mov cx, ax	     ; get height
-    208
-    209	01C1  E8 FFDC			 call SKIP_SPACES
-    210	01C4  E8 FFA2			 call ATOIHEX
-    211	01C7  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 8   ; shift color scheme to ah
-    212	      E0 D1 E0 D1 E0 D1	E0+
-    213	      D1 E0
-    214	01D7  50			 push ax     ; save ax with color scheme
+    197				     ; TODO: make itoa,	interrupt 08h, using 'Active' var, finish task?
+    198				     ;-----------------------------------------
+    199				     ; Skip spaces at ds:[si] by incrementing si
+    200				     ; Destr: si
+    201				     ;-----------------------------------------
+    202	01BE			     SKIP_SPACES proc
+    203	01BE  51			 push cx
+    204	01BF				 SKIP_SPACES_BEGIN:
+    205	01BF  8A 0C			 mov cl, [si]
+    206	01C1  80 F9 20			 cmp cl, ' '
+    207	01C4  75 03			 jne SKIP_SPACES_END
+    208	01C6  46			 inc si
+    209	01C7  EB F6			 jmp SKIP_SPACES_BEGIN
+    210	01C9				 SKIP_SPACES_END:
+    211	01C9  59			 pop cx
+    212	01CA  C3			 ret
+    213	01CB				 endp
+    214				     ;-----------------------------------------
     215
-    216	01D8  E8 FFC5			 call SKIP_SPACES
-    217	01DB  E8 FF6E			 call ATOI			 ; get pattern number (0 - custom, next	- as in	programm at +
-    218				     FRAME_PATTERN)
-    219	01DE  8B D6			 mov dx, si  ; save si in dx
-    220	01E0  3D 0000			 cmp ax, 0
-    221	01E3  74 13			 je COMM_LINE_PATTERN
-    222
-    223	01E5  48			 dec ax				 ; if ax != 0 :	ax-- to	get correct offset
-    224	01E6  8B F8			 mov di, ax			 ; di =	ax
-    225	01E8  D1 E7 D1 E7 D1 E7		 shl di, 3			 ; di *= 8
-    226	01EE  03 F8			 add di, ax			 ; di += ax => di *= 9
-    227	01F0  8D B5 029Ar		 lea si, [FRAME_PATTERN	+ di]	 ; address to constant (hardcoded) string with pattern
-    228	01F4  40			 inc ax				 ; return ax to	non zero to be sure for	correct	algorithm   +
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 5
+    216				     ;-----------------------------------------
+    217				     ; Read string from	ds:[si]
+    218				     ; Ret: ah - color scheme
+    219				     ;	    bx - height
+    220				     ;	    cx - width
+    221				     ;	    dx - addr of text_str
+    222				     ;	    si - addr of frame_pattern
+    223				     ; Destr: ax, bx, cx, dx, si
+    224				     ;-----------------------------------------
+    225	01CB			     PARSE_COMMAND_LINE	proc
+    226	01CB  57			 push di
+    227	01CC  BE 0081			 mov si, COMMAND_LINE_BEGIN_ADDRESS
+    228
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 5
 task_2.asm
 
 
 
-    229				     next
-    230	01F5  EB 04 90			 jmp COMM_LINE_END
-    231
-    232	01F8				 COMM_LINE_PATTERN:  ; if ax ==	0 === custom frame_pattern
-    233	01F8  E8 FFA5			 call SKIP_SPACES    ; si = first not space symbol
-    234
-    235	01FB				 COMM_LINE_END:
+    229	01CF  E8 FFEC			 call SKIP_SPACES
+    230	01D2  E8 FF95			 call ATOI
+    231	01D5  8B D8			 mov bx, ax	     ; get width TODO: move to another function
+    232
+    233	01D7  E8 FFE4			 call SKIP_SPACES
+    234	01DA  E8 FF8D			 call ATOI
+    235	01DD  8B C8			 mov cx, ax	     ; get height
     236
-    237	01FB  56			 push si	     ; save si with frame pattern address
-    238
-    239					 ; now need to find string which will be inside	frame
-    240	01FC  8B F2			 mov si, dx	     ; return si index from dx to si to	continue command line parsing
-    241	01FE  E8 FF9F			 call SKIP_SPACES    ; skip spaces to first nonspaceable
-    242	0201  3D 0000			 cmp ax, 0	     ;
-    243	0204  74 06			 je COMM_LINE_CUSTOM_PATTERN
-    244	0206  E8 FF97			 call SKIP_SPACES	   ; if	ax != 0	it means that printable	string exactly after the    +
-    245				     offset-number
-    246	0209  EB 0B 90			 jmp COMM_LINE_CUSTOM_PATTERN_END
-    247
-    248	020C				 COMM_LINE_CUSTOM_PATTERN: ; if	ax == 0	(custom	line)
-    249	020C  B0 20			 mov al, ' '
-    250	020E  E8 0018			 call STRLEN		   ; find length of pattern (usually 9,	but can	be more)
-    251	0211  03 F1			 add si, cx		   ; add this length offset to si
-    252	0213  E8 FF8A			 call SKIP_SPACES	   ; and skip spaces to	next nonspaceable symbol
-    253	0216				 COMM_LINE_CUSTOM_PATTERN_END:
-    254
-    255	0216  8B D6			 mov dx, si	     ; save addr of string to dx
-    256
-    257	0218  5E			 pop si
-    258
-    259	0219  58			 pop ax
-    260	021A  5F			 pop di
-    261	021B  C3			 ret
-    262	021C				 endp
-    263				     ;-----------------------------------------
+    237	01DF  E8 FFDC			 call SKIP_SPACES
+    238	01E2  E8 FFA2			 call ATOIHEX
+    239	01E5  D1 E0 D1 E0 D1 E0	D1+	 shl ax, 8   ; shift color scheme to ah
+    240	      E0 D1 E0 D1 E0 D1	E0+
+    241	      D1 E0
+    242	01F5  50			 push ax     ; save ax with color scheme
+    243
+    244	01F6  E8 FFC5			 call SKIP_SPACES
+    245	01F9  E8 FF6E			 call ATOI			 ; get pattern number (0 - custom, next	- as in	programm at +
+    246				     FRAME_PATTERN)
+    247	01FC  8B D6			 mov dx, si  ; save si in dx
+    248	01FE  3D 0000			 cmp ax, 0
+    249	0201  74 13			 je COMM_LINE_PATTERN
+    250
+    251	0203  48			 dec ax				 ; if ax != 0 :	ax-- to	get correct offset
+    252	0204  8B F8			 mov di, ax			 ; di =	ax
+    253	0206  D1 E7 D1 E7 D1 E7		 shl di, 3			 ; di *= 8
+    254	020C  03 F8			 add di, ax			 ; di += ax => di *= 9
+    255	020E  8D B5 02AFr		 lea si, [FRAME_PATTERN	+ di]	 ; address to constant (hardcoded) string with pattern
+    256	0212  40			 inc ax				 ; return ax to	non zero to be sure for	correct	algorithm   +
+    257				     next
+    258	0213  EB 04 90			 jmp COMM_LINE_END
+    259
+    260	0216				 COMM_LINE_PATTERN:  ; if ax ==	0 === custom frame_pattern
+    261	0216  E8 FFA5			 call SKIP_SPACES    ; si = first not space symbol
+    262
+    263	0219				 COMM_LINE_END:
     264
-    265				     ;-----------------------------------------
-    266				     ; Put string at es:[di] with length of cx
-    267				     ; Destr: al, cx, di, si
-    268				     ;-----------------------------------------
-    269	021C			     PRINT_STRING proc
-    270	021C  50			 push ax	     ; to save color scheme
-    271	021D  B0 0D			 mov al, 0dh	     ; 0d = \n TODO: fix this??? Not universal function
-    272	021F  E8 0007			 call STRLEN	     ; put length in cx
-    273	0222  58			 pop ax
-    274	0223  49			 dec cx		     ; not print \n
-    275	0224				 PRINT_STRING_LOOP:
-    276	0224  AC			 lodsb
-    277	0225  AB			 stosw
-    278	0226  E2 FC			 loop PRINT_STRING_LOOP
-    279	0228  C3			 ret
-    280	0229				 endp
-    281				     ;-----------------------------------------
+    265	0219  56			 push si	     ; save si with frame pattern address
+    266
+    267					 ; now need to find string which will be inside	frame
+    268	021A  8B F2			 mov si, dx	     ; return si index from dx to si to	continue command line parsing
+    269	021C  E8 FF9F			 call SKIP_SPACES    ; skip spaces to first nonspaceable
+    270	021F  3D 0000			 cmp ax, 0	     ;
+    271	0222  74 06			 je COMM_LINE_CUSTOM_PATTERN
+    272	0224  E8 FF97			 call SKIP_SPACES	   ; if	ax != 0	it means that printable	string exactly after the    +
+    273				     offset-number
+    274	0227  EB 0B 90			 jmp COMM_LINE_CUSTOM_PATTERN_END
+    275
+    276	022A				 COMM_LINE_CUSTOM_PATTERN: ; if	ax == 0	(custom	line)
+    277	022A  B0 20			 mov al, ' '
+    278	022C  E8 0018			 call STRLEN		   ; find length of pattern (usually 9,	but can	be more)
+    279	022F  03 F1			 add si, cx		   ; add this length offset to si
+    280	0231  E8 FF8A			 call SKIP_SPACES	   ; and skip spaces to	next nonspaceable symbol
+    281	0234				 COMM_LINE_CUSTOM_PATTERN_END:
     282
-    283				     ;-----------------------------------------
-    284				     ; Count length of string from ds:[si] and puts it in cx, terminal symbol should be	in al
-    285				     ; Ret: cx - length	of string
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 6
+    283	0234  8B D6			 mov dx, si	     ; save addr of string to dx
+    284
+    285	0236  5E			 pop si
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 6
 task_2.asm
 
 
 
-    286				     ; Destr: ax, cx
-    287				     ;-----------------------------------------
-    288	0229			     STRLEN proc
-    289	0229  06			 push es
-    290	022A  57			 push di
-    291	022B  53			 push bx
-    292	022C  8B FE			 mov di, si	 ; di =	si, for	scasb
-    293	022E  8C DB			 mov bx, ds
-    294	0230  8E C3			 mov es, bx	 ; es =	ds, for	scasb
-    295	0232  B9 FFFF			 mov cx, -1	 ; cx =	FFFF
-    296	0235  F2> AE			 repne scasb	 ; while (cx-- != 0 && ZF == 0): ZF = (al == ES:[DI++])
-    297	0237  F7 D9			 neg cx
-    298	0239  49			 dec cx		 ; return cx to	normal positive	value
-    299	023A  5B			 pop bx
-    300	023B  5F			 pop di
-    301	023C  07			 pop es
-    302	023D  C3			 ret
-    303	023E				 endp
-    304				     ;-----------------------------------------
-    305
-    306
-    307	023E			     MAIN:
-    308	023E  33 C0			 xor ax, ax			 ; TODO: move to function 'INIT_RESIDENT'
-    309	0240  8E C0			 mov es, ax			 ; TODO: redo via int 25h
-    310	0242  BB 0024			 mov bx, 09h * 4
-    311
-    312	0245  26: 8B 07			 mov ax, es:[bx]
-    313	0248  A3 0119r			 mov word ptr Original_int09h_handler_offset, ax
-    314	024B  26: 8B 47	02		 mov ax, es:[bx	+ 2]
-    315	024F  A3 011Br			 mov word ptr Original_int09h_handler_segment, ax
-    316
-    317	0252  FA			 cli
-    318	0253  26: C7 07	0103r		 mov es:[bx], offset FRAME_ENABLE_INT
-    319	0258  0E			 push cs
-    320	0259  58			 pop ax
-    321	025A  26: 89 47	02		 mov es:[bx + 2], ax
-    322	025E  FB			 sti
-    323
-    324	025F  B8 3100			 mov ax, 3100h
-    325	0262  BA 029Ar			 mov dx, offset	END_OF_PROGRAMM
-    326	0265  D1 EA D1 EA D1 EA	D1+	 shr dx, 4
-    327	      EA
-    328	026D  42			 inc dx
-    329	026E  CD 21			 int 21h
-    330
-    331	0270  FC			 cld				; for correct work string functions
-    332	0271  B8 1003			 mov ax, 1003h
-    333	0274  B3 00			 mov bl, 0h
-    334	0276  CD 10			 int 10h
-    335
-    336	0278  E8 FEA3			 call INIT_SCREEN
-    337	027B  E8 FF2F			 call PARSE_COMMAND_LINE
-    338					 ; mov si, offset FRAME_PATTERN	; set character	data
-    339
-    340	027E  BF 0326			 mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ;	initial	offset
-    341					 ; mov ah, 1101010b	   ; set color mode
-    342					 ; mov bx, 5 ; width
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 7
+    286
+    287	0237  58			 pop ax
+    288	0238  5F			 pop di
+    289	0239  C3			 ret
+    290	023A				 endp
+    291				     ;-----------------------------------------
+    292
+    293				     ;-----------------------------------------
+    294				     ; Put string at es:[di] with length of cx
+    295				     ; Destr: al, cx, di, si
+    296				     ;-----------------------------------------
+    297	023A			     PRINT_STRING proc
+    298	023A  50			 push ax	     ; to save color scheme
+    299	023B  B0 0D			 mov al, 0dh	     ; 0d = \n TODO: fix this??? Not universal function
+    300	023D  E8 0007			 call STRLEN	     ; put length in cx
+    301	0240  58			 pop ax
+    302	0241  49			 dec cx		     ; not print \n
+    303	0242				 PRINT_STRING_LOOP:
+    304	0242  AC			 lodsb
+    305	0243  AB			 stosw
+    306	0244  E2 FC			 loop PRINT_STRING_LOOP
+    307	0246  C3			 ret
+    308	0247				 endp
+    309				     ;-----------------------------------------
+    310
+    311				     ;-----------------------------------------
+    312				     ; Count length of string from ds:[si] and puts it in cx, terminal symbol should be	in al
+    313				     ; Ret: cx - length	of string
+    314				     ; Destr: ax, cx
+    315				     ;-----------------------------------------
+    316	0247			     STRLEN proc
+    317	0247  06			 push es
+    318	0248  57			 push di
+    319	0249  53			 push bx
+    320	024A  8B FE			 mov di, si	 ; di =	si, for	scasb
+    321	024C  8C DB			 mov bx, ds
+    322	024E  8E C3			 mov es, bx	 ; es =	ds, for	scasb
+    323	0250  B9 FFFF			 mov cx, -1	 ; cx =	FFFF
+    324	0253  F2> AE			 repne scasb	 ; while (cx-- != 0 && ZF == 0): ZF = (al == ES:[DI++])
+    325	0255  F7 D9			 neg cx
+    326	0257  49			 dec cx		 ; return cx to	normal positive	value
+    327	0258  5B			 pop bx
+    328	0259  5F			 pop di
+    329	025A  07			 pop es
+    330	025B  C3			 ret
+    331	025C				 endp
+    332				     ;-----------------------------------------
+    333
+    334				     ;-----------------------------------------
+    335				     ; Fills offset and	segment	of interrupt #al to [di] and [di + 2], and rewrites
+    336				     ; in interrupt table with ds:[dx].	So dx should contain offset of our function
+    337				     ;-----------------------------------------
+    338	025C			     CREATE_ISR_CHAIN proc
+    339				     ;	   xor ax, ax
+    340				     ;	   mov es, ax			   ; TODO: redo	via int	25h
+    341				     ;	   mov bx, 09h * 4
+    342				     ;
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 7
 task_2.asm
 
 
 
-    343					 ; mov cx, 8 ; height
-    344
-    345	0281  83 EB 02			 sub bx, 2 ;
-    346	0284  83 E9 02			 sub cx, 2 ; decrease to include border	in number
-    347
-    348	0287  E8 FEAC			 call DRAW_FRAME
-    349
-    350	028A  B9 0006			 mov cx, 6
-    351	028D  BF 046A			 mov di, (7 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 5 * BYTES_PER_SYMBOL
-    352	0290  8B F2			 mov si, dx
-    353	0292  E8 FF87			 call PRINT_STRING
-    354					 ; Finish Programm
-    355	0295  B8 4C00			 mov ax, 4c00h			     ; ax = 4c00h
-    356	0298  CD 21			     int 21h		     ; exit(al)	= exit(0)
-    357
-    358	029A			     END_OF_PROGRAMM:		 ; TODO: optimise and make resident memory-economly
-    359	029A  31 32 33 34 35 36	37+  FRAME_PATTERN: db '123456789'					     ; debug
-    360	      38 39
-    361	02A3  2B 2D 2B 7C 20 7C	2B+		    db '+-+| |+-+'					     ; cool
-    362	      2D 2B
-    363	02AC  C9 CD BB BA 20 BA	C8+		    db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h,	0cdh, 0bch   ; stripes
-    364	      CD BC
-    365	02B5  04 03 04 03 20 03	04+		    db 04h, 03h, 04h, 03h, ' ',	03h, 04h, 03h, 04h	     ; hearts
-    366	      03 04
-    367				     end Start
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 8
+    343				     ;	   mov ax, es:[bx]
+    344				     ;	   mov word ptr	Original_int09h_handler_offset,	ax
+    345				     ;	   mov ax, es:[bx + 2]
+    346				     ;	   mov word ptr	Original_int09h_handler_segment, ax
+    347				     ;
+    348				     ;	   cli
+    349				     ;	   mov es:[bx],	offset FRAME_ENABLE_INT
+    350				     ;	   push	cs
+    351				     ;	   pop ax
+    352				     ;	   mov es:[bx +	2], ax
+    353				     ;	   sti
+    354	025C  B4 35			 mov ah, 35h
+    355	025E  CD 21			 int 21h					 ; es:[bx] is current interrupt	function
+    356	0260  89 1D			 mov [di], bx
+    357	0262  8C 45 02			 mov [di + 2], es
+    358	0265  B4 25			 mov ah, 25h
+    359	0267  CD 21			 int 21h
+    360	0269  C3			 ret
+    361	026A				 endp
+    362				     ;-----------------------------------------
+    363
+    364				     ;-----------------------------------------
+    365				     ;
+    366				     ;-----------------------------------------
+    367	026A			     MAKE_RESIDENT proc
+    368	026A  B8 3100			 mov ax, 3100h
+    369	026D  BA 02AFr			 mov dx, offset	END_OF_PROGRAMM
+    370	0270  D1 EA D1 EA D1 EA	D1+	 shr dx, 4
+    371	      EA
+    372	0278  42			 inc dx
+    373	0279  CD 21			 int 21h
+    374	027B  C3			 ret
+    375	027C				 endp
+    376				     ;-----------------------------------------
+    377
+    378	027C			     MAIN:
+    379	027C  B0 09			 mov al, 09h
+    380	027E  BA 0103r			 mov dx, offset	FRAME_ENABLE_INT
+    381	0281  BF 0122r			 mov di, offset	Original_int09h_handler_offset
+    382	0284  E8 FFD5			 call CREATE_ISR_CHAIN
+    383
+    384	0287  FC			 cld				; for correct work string functions
+    385	0288  B8 1003			 mov ax, 1003h
+    386	028B  B3 00			 mov bl, 0h
+    387	028D  CD 10			 int 10h
+    388
+    389	028F  E8 FEAA			 call INIT_SCREEN
+    390	0292  E8 FF36			 call PARSE_COMMAND_LINE
+    391					 ; mov si, offset FRAME_PATTERN	; set character	data
+    392
+    393	0295  BF 0326			 mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ;	initial	offset
+    394					 ; mov ah, 1101010b	   ; set color mode
+    395					 ; mov bx, 5 ; width
+    396					 ; mov cx, 8 ; height
+    397
+    398	0298  83 EB 02			 sub bx, 2 ;
+    399	029B  83 E9 02			 sub cx, 2 ; decrease to include border	in number
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 8
+task_2.asm
+
+
+
+    400
+    401	029E  E8 FEB3			 call DRAW_FRAME
+    402
+    403	02A1  B9 0006			 mov cx, 6
+    404	02A4  BF 046A			 mov di, (7 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 5 * BYTES_PER_SYMBOL
+    405	02A7  8B F2			 mov si, dx
+    406	02A9  E8 FF8E			 call PRINT_STRING
+    407					 ; Finish Programm
+    408	02AC  E8 FFBB			 call MAKE_RESIDENT
+    409
+    410	02AF			     END_OF_PROGRAMM:		 ; TODO: optimise and make resident memory-economly
+    411	02AF  31 32 33 34 35 36	37+  FRAME_PATTERN: db '123456789'					     ; debug
+    412	      38 39
+    413	02B8  2B 2D 2B 7C 20 7C	2B+		    db '+-+| |+-+'					     ; cool
+    414	      2D 2B
+    415	02C1  C9 CD BB BA 20 BA	C8+		    db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h,	0cdh, 0bch   ; stripes
+    416	      CD BC
+    417	02CA  04 03 04 03 20 03	04+		    db 04h, 03h, 04h, 03h, ' ',	03h, 04h, 03h, 04h	     ; hearts
+    418	      03 04
+    419				     end Start
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 9
 Symbol Table
 
 
@@ -408,11 +465,13 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "02/17/25"
+??DATE				  Text	 "02/19/25"
 ??FILENAME			  Text	 "task_2  "
-??TIME				  Text	 "26:21:06"
+??TIME				  Text	 "19:26:23"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
+@@ANOTHER_BUTTON		  Near	 DGROUP:011E
+@@ANOTHER_BUTTON		  Near	 DGROUP:0134
 @CODE				  Text	 DGROUP
 @CODESIZE			  Text	 0
 @CPU				  Text	 0101H
@@ -424,54 +483,59 @@ Symbol Name			  Type	 Value
 @MODEL				  Text	 1
 @STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
-ACTIVE				  Near	 DGROUP:011D
-ATOI				  Near	 DGROUP:014C
-ATOIHEX				  Near	 DGROUP:0169
-ATOIHEX_CHECK_LETTER		  Near	 DGROUP:017B
-ATOIHEX_DIGIT			  Near	 DGROUP:0188
-ATOIHEX_END			  Near	 DGROUP:019E
-ATOIHEX_LETTER			  Near	 DGROUP:018E
-ATOIHEX_MULT			  Near	 DGROUP:0191
-ATOIHEX_READ_SYMBOL		  Near	 DGROUP:016C
-ATOI_END			  Near	 DGROUP:0167
-ATOI_READ_SYMBOL		  Near	 DGROUP:0151
+ATOI				  Near	 DGROUP:016A
+ATOIHEX				  Near	 DGROUP:0187
+ATOIHEX_CHECK_LETTER		  Near	 DGROUP:0199
+ATOIHEX_DIGIT			  Near	 DGROUP:01A6
+ATOIHEX_END			  Near	 DGROUP:01BC
+ATOIHEX_LETTER			  Near	 DGROUP:01AC
+ATOIHEX_MULT			  Near	 DGROUP:01AF
+ATOIHEX_READ_SYMBOL		  Near	 DGROUP:018A
+ATOI_END			  Near	 DGROUP:0185
+ATOI_READ_SYMBOL		  Near	 DGROUP:016F
 BYTES_PER_SYMBOL		  Number 0002
 COMMAND_LINE_BEGIN_ADDRESS	  Number 0081
-COMM_LINE_CUSTOM_PATTERN	  Near	 DGROUP:020C
-COMM_LINE_CUSTOM_PATTERN_END	  Near	 DGROUP:0216
-COMM_LINE_END			  Near	 DGROUP:01FB
-COMM_LINE_PATTERN		  Near	 DGROUP:01F8
-DRAW_FRAME			  Near	 DGROUP:0136
-DRAW_LINE			  Near	 DGROUP:0126
-DRAW_N_LINES			  Near	 DGROUP:0139
-DRAW_N_LINES_END		  Near	 DGROUP:0145
-END_OF_PROGRAMM			  Near	 DGROUP:029A
+COMM_LINE_CUSTOM_PATTERN	  Near	 DGROUP:022A
+COMM_LINE_CUSTOM_PATTERN_END	  Near	 DGROUP:0234
+COMM_LINE_END			  Near	 DGROUP:0219
+COMM_LINE_PATTERN		  Near	 DGROUP:0216
+CREATE_ISR_CHAIN		  Near	 DGROUP:025C
+DRAW_FRAME			  Near	 DGROUP:0154
+DRAW_LINE			  Near	 DGROUP:0144
+DRAW_N_LINES			  Near	 DGROUP:0157
+DRAW_N_LINES_END		  Near	 DGROUP:0163
+END_OF_PROGRAMM			  Near	 DGROUP:02AF
 FRAME_ENABLE_INT		  Near	 DGROUP:0103
-FRAME_PATTERN			  Near	 DGROUP:029A
-INIT_SCREEN			  Near	 DGROUP:011E
-MAIN				  Near	 DGROUP:023E
-ORIGINAL_INT09H_HANDLER_OFFSET	  Near	 DGROUP:0119
-ORIGINAL_INT09H_HANDLER_SEGMENT	  Near	 DGROUP:011B
-PARSE_COMMAND_LINE		  Near	 DGROUP:01AD
+FRAME_PATTERN			  Near	 DGROUP:02AF
+FRAME_UPDATE_INT		  Near	 DGROUP:0127
+INIT_SCREEN			  Near	 DGROUP:013C
+IS_FRAME_ACTIVE			  Near	 DGROUP:0126
+MAIN				  Near	 DGROUP:027C
+MAKE_RESIDENT			  Near	 DGROUP:026A
+ORIGINAL_INT08H_HANDLER_OFFSET	  Near	 DGROUP:0138
+ORIGINAL_INT08H_HANDLER_SEGMENT	  Near	 DGROUP:013A
+ORIGINAL_INT09H_HANDLER_OFFSET	  Near	 DGROUP:0122
+ORIGINAL_INT09H_HANDLER_SEGMENT	  Near	 DGROUP:0124
+PARSE_COMMAND_LINE		  Near	 DGROUP:01CB
 PATTERN_OFFSET			  Number 0003
-PRINT_STRING			  Near	 DGROUP:021C
-PRINT_STRING_LOOP		  Near	 DGROUP:0224
-SCREEN_WIDTH			  Number 0050
-SKIP_SPACES			  Near	 DGROUP:01A0
-SKIP_SPACES_BEGIN		  Near	 DGROUP:01A1
-SKIP_SPACES_END			  Near	 DGROUP:01AB
-START				  Near	 DGROUP:0100
-STRLEN				  Near	 DGROUP:0229
-Turbo Assembler	 Version 4.1	    02/17/25 26:21:06	    Page 9
+PRINT_STRING			  Near	 DGROUP:023A
+Turbo Assembler	 Version 4.1	    02/19/25 19:26:23	    Page 10
 Symbol Table
 
 
 
+PRINT_STRING_LOOP		  Near	 DGROUP:0242
+SCREEN_WIDTH			  Number 0050
+SKIP_SPACES			  Near	 DGROUP:01BE
+SKIP_SPACES_BEGIN		  Near	 DGROUP:01BF
+SKIP_SPACES_END			  Near	 DGROUP:01C9
+START				  Near	 DGROUP:0100
+STRLEN				  Near	 DGROUP:0247
 VIDEO_MEMORY_SEGMENT_ADDR	  Number B800
 
 Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  02BE Word	  Public  CODE
+  _TEXT				  16  02D3 Word	  Public  CODE
 
