@@ -55,7 +55,8 @@ FRAME_UPDATE_INT proc
     cmp al, 1
     jne @@DONT_SHOW_FRAME
 
-    push bx cx dx di si es ds
+    push bx cx dx di si
+    push bp es ds ss
     push cs
     pop ds
     cld                              ; for correct work string functions
@@ -69,7 +70,7 @@ FRAME_UPDATE_INT proc
 
     mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ; initial offset
     mov ah, 1101010b            ; set color mode
-    mov bx, 6                   ; height
+    mov bx, 15                  ; height
     mov cx, 9                   ; width
 
     sub bx, 2 ;
@@ -80,12 +81,9 @@ FRAME_UPDATE_INT proc
     ; TODO: make constants to offset XY
     mov di, (6 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 4 * BYTES_PER_SYMBOL ; initial offset
     call PRINT_REGISTERS
-    ; mov cx, 6
-    ; mov di, (7 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 5 * BYTES_PER_SYMBOL
-    ; mov si, dx
-    ; call PRINT_STRING
 
-    pop ds es si di dx cx bx
+    pop ss ds es bp
+    pop si di dx cx bx
     @@DONT_SHOW_FRAME:
     pop ax
     db 0eah
@@ -102,8 +100,10 @@ Original_int08h_handler_segment:
 ; Destr: al, cx, si, di
 ;-----------------------------------------
 PRINT_REGISTERS proc
-    mov cx, 4
+    mov cx, 10
     mov si, offset REG_PATTERN
+    mov bp, sp
+    add bp, 10 * 2
 @@PRINT_REG:
     push di
     lodsb
@@ -112,20 +112,40 @@ PRINT_REGISTERS proc
     stosw
     lodsb
     stosw       ; print ax_ (space)
-    mov al, 'A'
-    stosw
-    mov al, 'B'
-    stosw
-    mov al, 'C'
-    stosw
-    mov al, 'D'
-    stosw       ; print value
+    dec bp
+    dec bp
+    mov bx, ss:[bp]
+    call PRINT_REG_VALUE
     pop di
     add di, SCREEN_WIDTH * BYTES_PER_SYMBOL
     loop @@PRINT_REG
     ret
     endp
-REG_PATTERN: db "ax bx cx dx "
+REG_PATTERN: db "ax bx cx dx di si bp es ds ss "
+;-----------------------------------------
+
+;-----------------------------------------
+; Prints register value (bx) to es:[di] in hex mode,
+; Destr:
+;-----------------------------------------
+PRINT_REG_VALUE proc
+    push ax cx dx
+    ; mov bx, cs
+    mov cx, 4
+    @@GET_DIGIT:
+    mov dx, bx
+    and bx, 1111000000000000b
+    shr bx, 12
+    mov al, [bx + offset HEX_TO_ASCCI_ARR]
+    shl dx, 4
+    mov bx, dx
+    stosw
+    loop @@GET_DIGIT
+    pop dx cx ax
+    ret
+HEX_TO_ASCCI_ARR:
+    db '0123456789ABCDEF'
+    endp
 ;-----------------------------------------
 
 ;-----------------------------------------
