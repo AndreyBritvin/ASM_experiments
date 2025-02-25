@@ -11,6 +11,10 @@ BYTES_PER_SYMBOL            equ 2
 SCREEN_WIDTH                equ 80
 PATTERN_OFFSET              equ 3
 COMMAND_LINE_BEGIN_ADDRESS  equ 81h
+REGISTERS_AMOUNT            equ 10
+TOGGLE_SCAN_CODE            equ 12h
+FRAME_X_POSITION            equ 5
+FRAME_Y_POSITION            equ 3
 ;--------------CONSTANTS_END--------------------
 
 ;-----------------------------------------
@@ -19,22 +23,22 @@ COMMAND_LINE_BEGIN_ADDRESS  equ 81h
 ; Destr: nothing
 ;-----------------------------------------
 FRAME_ENABLE_INT proc
-    push ax bx es
-    mov ax, VIDEO_MEMORY_SEGMENT_ADDR
-    mov es, ax
-    mov ah, 4eh
-    mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
+    push ax
+    ; mov ax, VIDEO_MEMORY_SEGMENT_ADDR
+    ; mov es, ax
+    ; mov ah, 4eh
+    ; mov bx, 5 * SCREEN_WIDTH * BYTES_PER_SYMBOL + 40 * BYTES_PER_SYMBOL
     in al, 60h
 
-    cmp al, 12h
+    cmp al, TOGGLE_SCAN_CODE                ; if SCAN-CODE IS ... then toggle IS_FRAME_ACTIVE
     jne @@ANOTHER_BUTTON
-    mov es:[bx], ax
+    ;mov es:[bx], ax
     mov al, byte ptr cs:IS_FRAME_ACTIVE
     xor al, 1
     mov byte ptr cs:IS_FRAME_ACTIVE, al
     @@ANOTHER_BUTTON:
 
-    pop es bx ax
+    pop ax
     db 0eah
 Original_int09h_handler_offset:
     dw 0
@@ -53,37 +57,40 @@ FRAME_UPDATE_INT proc
     push ax
     mov al, byte ptr cs:IS_FRAME_ACTIVE
     cmp al, 1
-    jne @@DONT_SHOW_FRAME
+    jne @@DONT_SHOW_FRAME           ; if IS_FRAME_ACTIVE
 
     push bx cx dx di si
-    push bp es ds ss
+    push bp es ds ss                ; save all registers (for correct interrupt and for print)
+
     push cs
-    pop ds
-    cld                              ; for correct work string functions
-    mov ax, 1003h                    ; set video memory highest blink for blinking or for high contrast
-    mov bl, 0h
+    pop ds                          ; ds = cs
+
+    cld                             ; for correct work string functions
+    mov ax, 1003h                   ; set video memory highest bit for blinking or for high contrast
+    mov bl, 0h                      ; for high constast
     int 10h
 
     call INIT_SCREEN
-    ; call PARSE_COMMAND_LINE
-    mov si, offset FRAME_PATTERN + 9 ; set character data
+    mov si, offset FRAME_PATTERN + 3 * PATTERN_OFFSET * 1 ; set frame_pattern
 
-    mov di, (5 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 3 * BYTES_PER_SYMBOL ; initial offset
-    mov ah, 1101010b            ; set color mode
-    mov bx, 15                  ; height
-    mov cx, 9                   ; width
+    mov di, ( FRAME_X_POSITION * SCREEN_WIDTH * BYTES_PER_SYMBOL)    \
+            + FRAME_Y_POSITION                * BYTES_PER_SYMBOL   ; initial offset
+    mov ah, 1101010b                                ; set color mode
+    mov bx, REGISTERS_AMOUNT + 2                    ; height
+    mov cx, 9                                       ; width |ax ABCD|
+                                                    ;       012345678 7+2
 
     sub bx, 2 ;
     sub cx, 2 ; decrease to include border in number
 
     call DRAW_FRAME
 
-    ; TODO: make constants to offset XY
-    mov di, (6 * SCREEN_WIDTH * BYTES_PER_SYMBOL) + 4 * BYTES_PER_SYMBOL ; initial offset
+    mov di, ( (FRAME_X_POSITION + 1) * SCREEN_WIDTH * BYTES_PER_SYMBOL) \
+            + (FRAME_Y_POSITION + 1)                * BYTES_PER_SYMBOL ; initial offset
     call PRINT_REGISTERS
 
     pop ss ds es bp
-    pop si di dx cx bx
+    pop si di dx cx bx  ; restore values
     @@DONT_SHOW_FRAME:
     pop ax
     db 0eah
@@ -100,10 +107,10 @@ Original_int08h_handler_segment:
 ; Destr: al, cx, si, di
 ;-----------------------------------------
 PRINT_REGISTERS proc
-    mov cx, 10
+    mov cx, REGISTERS_AMOUNT
     mov si, offset REG_PATTERN
     mov bp, sp
-    add bp, 10 * 2
+    add bp, REGISTERS_AMOUNT * 2 ; to go from top to bottom bc registers pushed in such order
 @@PRINT_REG:
     push di
     lodsb
@@ -112,33 +119,36 @@ PRINT_REGISTERS proc
     stosw
     lodsb
     stosw       ; print ax_ (space)
-    dec bp
-    dec bp
+
     mov bx, ss:[bp]
+    dec bp
+    dec bp      ; get next value
     call PRINT_REG_VALUE
+
     pop di
     add di, SCREEN_WIDTH * BYTES_PER_SYMBOL
     loop @@PRINT_REG
+
     ret
     endp
 REG_PATTERN: db "ax bx cx dx di si bp es ds ss "
 ;-----------------------------------------
 
 ;-----------------------------------------
-; Prints register value (bx) to es:[di] in hex mode,
-; Destr:
+; Prints register value (from bx) to es:[di] in hex mode, aka itoa
+; Destr: di
 ;-----------------------------------------
 PRINT_REG_VALUE proc
     push ax cx dx
     ; mov bx, cs
-    mov cx, 4
+    mov cx, 4   ; in 16 bit register _4_ parts of 4 bits
     @@GET_DIGIT:
-    mov dx, bx
-    and bx, 1111000000000000b
-    shr bx, 12
-    mov al, [bx + offset HEX_TO_ASCCI_ARR]
-    shl dx, 4
-    mov bx, dx
+    mov dx, bx                              ; save in dx
+    and bx, 1111000000000000b               ; mask first 4 bits
+    shr bx, 12                              ; delete zeros (bc little endian)
+    mov al, [bx + offset HEX_TO_ASCCI_ARR]  ; get ascii character
+    shl dx, 4                               ; delete first 4 bits and replace new value
+    mov bx, dx                              ; resave dx to bx
     stosw
     loop @@GET_DIGIT
     pop dx cx ax
@@ -209,6 +219,12 @@ DRAW_FRAME proc
     endp
 ;-----------------------------------------
 
+FRAME_PATTERN: db '123456789'                                           ; debug
+               db '+-+| |+-+'                                           ; cool
+               db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch   ; stripes
+               db 04h, 03h, 04h, 03h, ' ', 03h, 04h, 03h, 04h           ; hearts
+END_OF_RESIDENT:            ; All before will save as resident. Below will destroy after program finishes
+
 ;-----------------------------------------
 ; Read number from ds:[si] and put integer result to ax
 ; Destr ax, si
@@ -276,7 +292,7 @@ ATOIHEX proc
     ret
     endp
 ;-----------------------------------------
-; TODO: make itoa, interrupt 08h, using 'Active' var, finish task?
+
 ;-----------------------------------------
 ; Skip spaces at ds:[si] by incrementing si
 ; Destr: si
@@ -429,10 +445,10 @@ CREATE_ISR_CHAIN proc
 ; Destr: ax, dx
 ;-----------------------------------------
 MAKE_RESIDENT proc
-    mov dx, offset END_OF_PROGRAMM      ; TODO: memory economy
-    shr dx, 4                           ;
-    inc dx
-    mov ax, 3100h                       ;
+    mov dx, offset END_OF_RESIDENT      ; select area to save
+    shr dx, 4                           ; bc in dx paragraphs of 16 bytes, so divide by 16
+    inc dx                              ; for some cases where last bytes could lost
+    mov ax, 3100h                       ; create resident
     int 21h
     ret
     endp
@@ -442,20 +458,14 @@ MAIN:
     mov al, 09h
     mov dx, offset FRAME_ENABLE_INT
     mov di, offset Original_int09h_handler_offset
-    call CREATE_ISR_CHAIN
+    call CREATE_ISR_CHAIN                           ; create my isr handler for 09h
 
     mov al, 08h
     mov dx, offset FRAME_UPDATE_INT
     mov di, offset Original_int08h_handler_offset
-    call CREATE_ISR_CHAIN
+    call CREATE_ISR_CHAIN                           ; create my isr handler for 08h
 
     ; Finish Programm
     call MAKE_RESIDENT
 
-FRAME_PATTERN: db '123456789'                                           ; debug
-               db '+-+| |+-+'                                           ; cool
-               db 0c9h, 0cdh, 0bbh, 0bah, ' ', 0bah, 0c8h, 0cdh, 0bch   ; stripes
-               db 04h, 03h, 04h, 03h, ' ', 03h, 04h, 03h, 04h           ; hearts
-END_OF_PROGRAMM:            ; TODO: optimise and make resident memory-economly
-                            ; NB! DONT FORGET TO REPLACE PATTERN CLOSER TO RESIDENTAL PART
 end Start
