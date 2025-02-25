@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/03/25 20:21:51	    Page 1
+Turbo Assembler	 Version 4.1	    02/19/25 28:39:19	    Page 1
 1_task.asm
 
 
@@ -18,7 +18,7 @@ Turbo Assembler	 Version 4.1	    02/03/25 20:21:51	    Page 1
      13	010C  48 65 6C 6C 6F 20	57+  MyStr: db "Hello World$"
      14	      6F 72 6C 64 24
      15				     end start
-Turbo Assembler	 Version 4.1	    02/03/25 20:21:51	    Page 2
+Turbo Assembler	 Version 4.1	    02/19/25 28:39:19	    Page 2
 Symbol Table
 
 
@@ -26,9 +26,9 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "02/03/25"
+??DATE				  Text	 "02/19/25"
 ??FILENAME			  Text	 "1_task  "
-??TIME				  Text	 "20:21:51"
+??TIME				  Text	 "28:39:19"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
