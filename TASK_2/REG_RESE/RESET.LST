@@ -1,0 +1,55 @@
+Turbo Assembler	 Version 4.1	    02/20/25 21:57:48	    Page 1
+reset.asm
+
+
+
+      1	0000			     .model tiny
+      2	0000			     .code
+      3				     org 100h
+      4	0100			     Start:
+      5	0100  B8 ABCD			 mov ax, 0abcdh
+      6	0103  BB BCDE			 mov bx, 0bcdeh
+      7	0106  B9 CDEF			 mov cx, 0cdefh
+      8	0109  BA DEFA			 mov dx, 0defah
+      9	010C  BE 1234			 mov si, 1234h
+     10	010F  BD 6789			 mov bp, 6789h
+     11	0112  BF 7890			 mov di, 7890h
+     12	0115  E4 60			 in al,	60h
+     13	0117  3C 0E			 cmp al, 0eh ; backspace
+     14	0119  75 E5			 jne Start
+     15
+     16	011B  B8 4C00			 mov ax, 4c00h
+     17	011E  CD 21			 int 21h	 ; exit(al)
+     18				     end Start
+Turbo Assembler	 Version 4.1	    02/20/25 21:57:48	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/20/25"
+??FILENAME			  Text	 "reset	  "
+??TIME				  Text	 "21:57:48"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 RESET
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0120 Word	  Public  CODE
+
